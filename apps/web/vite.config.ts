@@ -28,6 +28,10 @@ export default defineConfig({
         find: /^react\/jsx-runtime$/,
         replacement: require.resolve("react/jsx-runtime"),
       },
+      {
+        find: /^lucide-react$/,
+        replacement: require.resolve("lucide-react"),
+      },
       { find: /^react-dom$/, replacement: require.resolve("react-dom") },
       { find: /^react$/, replacement: require.resolve("react") },
     ],
