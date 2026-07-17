@@ -1,4 +1,6 @@
+export * from "./codec/json"
 export * from "./player/apply"
+export * from "./player/describe"
 export * from "./player/materialize"
 export * from "./player/player"
 export * from "./schema/types"
