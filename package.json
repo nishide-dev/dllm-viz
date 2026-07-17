@@ -1,0 +1,24 @@
+{
+  "name": "dllm-viz",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "prepare": "[ ! -d .git ] || lefthook install",
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "format": "turbo format",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.4",
+    "lefthook": "^2.1.10",
+    "turbo": "^2.9.18",
+    "typescript": "~6"
+  },
+  "packageManager": "pnpm@10.33.4",
+  "engines": {
+    "node": ">=20"
+  }
+}
