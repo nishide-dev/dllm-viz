@@ -128,6 +128,10 @@ The first release is NOT intended to:
 | D-008 | Treat provenance and truthfulness as first-class schema fields. | Accepted |
 | D-009 | Use DOM for normal token canvases and Canvas for dense heatmaps/large trajectories. | Accepted |
 | D-010 | Publish original code under Apache-2.0 unless later compatibility review requires a change. | Proposed |
+| D-011 | Until Phase 5 npm publication, distribute `@dllm-viz/core` and `@dllm-viz/react` logic as `registry:lib` items; registry items MUST NOT declare unpublished npm packages as dependencies. | Accepted |
+| D-012 | Zod (v4) is the canonical schema source; `schemas/*.schema.json` are generated artifacts via `z.toJSONSchema()`. | Accepted |
+| D-013 | Slot IDs are deterministic, adapter-issued monotonic IDs (`s0`, `s1`, …); insertions allocate fresh IDs and IDs are never reused within a trace. | Accepted |
+| D-014 | Checkpoints live only in the top-level `checkpoints` array; `checkpoint` is not a frame kind. | Accepted |
 
 ---
 
@@ -421,6 +425,7 @@ dllm-viz/
 │       └── src/components/
 ├── registry/
 │   └── default/
+│       ├── lib/                       # generated dllm-viz-core / dllm-viz-react lib items
 │       ├── denoising-token-canvas/
 │       ├── diffusion-step-controls/
 │       ├── trace-inspector/
@@ -658,6 +663,12 @@ export type TokenState =
 
 `renoised` MAY be transient. The stable post-frame state will normally become `masked`.
 
+Slot ID rules (per D-013):
+
+- Slot IDs MUST be deterministic and adapter-issued, using a monotonic counter (`s0`, `s1`, …).
+- Inserted slots MUST allocate fresh IDs; an ID MUST never be reused within a trace, even after deletion.
+- The same input MUST always produce the same slot IDs, so traces are diffable and testable.
+
 ### 9.8 Frames
 
 ```ts
@@ -671,7 +682,6 @@ export interface DiffusionFrame {
     | "canvas-start"
     | "canvas-commit"
     | "resize"
-    | "checkpoint"
     | "final";
 
   step?: number;
@@ -842,6 +852,73 @@ checkpointInterval = 32
 
 The player MUST seek from the nearest previous checkpoint rather than replaying from frame zero.
 
+Checkpoints MUST be stored only in the top-level `checkpoints` array (and `initial`), never as frames (per D-014). In JSONL streams a checkpoint is its own event line, distinct from frame lines.
+
+### 9.14 Supporting types
+
+```ts
+export interface ModelDescriptor {
+  name: string;
+  provider?: string;
+  parameters?: string;
+  revision?: string;
+}
+
+export interface TokenizerDescriptor {
+  name: string;
+  vocabSize?: number;
+  maskTokenId?: number;
+  maskTokenText?: string;
+  specialTokenIds?: number[];
+}
+
+export interface TraceTextRegion {
+  text: string;
+  tokenIds?: number[];
+  slotIds?: string[];
+}
+
+export interface TraceCheckpoint {
+  checkpointId: string;
+  /**
+   * Ordinal of the last frame whose effects are included in this
+   * checkpoint. The `initial` checkpoint uses -1 (state before any frame).
+   */
+  frameOrdinal: number;
+  slots: TokenSlot[];
+  metrics?: FrameMetrics;
+}
+
+export interface FinalResult {
+  text: string;
+  tokenIds?: number[];
+  finishReason?: "completed" | "length" | "cancelled" | "error";
+  totalForwardPasses?: number;
+  elapsedMs?: number;
+}
+
+export interface TraceAnnotation {
+  annotationId: string;
+  kind: "note" | "highlight" | "warning";
+  text: string;
+  target?: {
+    slotId?: string;
+    frameId?: string;
+  };
+  provenance?: "measured" | "derived" | "illustrative";
+}
+
+export interface DiffusionSnapshot {
+  frameIndex: number;
+  frame?: DiffusionFrame;
+  slots: TokenSlot[];
+  metrics?: FrameMetrics;
+  status: "idle" | "playing" | "paused" | "ended";
+}
+```
+
+Schema validation (per D-012): Zod v4 definitions in `@dllm-viz/core` are the canonical schema source. `schemas/trace.schema.json` and `schemas/stream-event.schema.json` MUST be generated from them via `z.toJSONSchema()` and MUST NOT be edited by hand.
+
 Supported formats:
 
 | Format | Requirement |
@@ -918,6 +995,21 @@ export interface TraceAdapter<TInput = unknown> {
   createTrace(input: TInput, options?: AdapterOptions): DiffusionTrace;
   append?(event: unknown, builder: TraceBuilder): void;
   finalize?(result: unknown, builder: TraceBuilder): void;
+}
+
+export interface AdapterOptions {
+  traceId?: string;
+  checkpointInterval?: number;
+  topK?: number;
+  includePrompt?: boolean;
+}
+
+export interface TraceBuilder {
+  readonly trace: DiffusionTrace;
+  addFrame(frame: Omit<DiffusionFrame, "ordinal"> & { ordinal?: number }): void;
+  addCheckpoint(checkpoint?: TraceCheckpoint): void;
+  setFinal(final: FinalResult): void;
+  build(): DiffusionTrace;
 }
 ```
 
@@ -1401,19 +1493,31 @@ Example:
   "homepage": "https://github.com/<owner>/dllm-viz",
   "items": [
     {
+      "name": "dllm-viz-core",
+      "type": "registry:lib",
+      "title": "dLLM Viz Core",
+      "description": "Trace schema, validation, and playback engine (generated from packages/core).",
+      "files": [
+        {
+          "path": "registry/default/lib/dllm-viz-core.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "denoising-token-canvas",
       "type": "registry:ui",
       "title": "Denoising Token Canvas",
       "description": "Trace-faithful token canvas for diffusion language model denoising.",
       "dependencies": [
-        "@dllm-viz/core",
-        "@dllm-viz/react",
         "motion"
       ],
       "registryDependencies": [
         "tooltip",
         "badge",
-        "scroll-area"
+        "scroll-area",
+        "dllm-viz-core",
+        "dllm-viz-react"
       ],
       "files": [
         {
@@ -1452,6 +1556,15 @@ pnpm dlx shadcn@latest add @dllm-viz/denoising-token-canvas
 - Components MUST work in light and dark themes.
 - Components MUST have no Next.js import.
 - Components MUST work with `rsc: false`.
+
+### 16.4 Distribution of core and react logic (per D-011)
+
+Until `@dllm-viz/core` and `@dllm-viz/react` are published to npm (Phase 5):
+
+- Registry items MUST NOT declare them as npm `dependencies`; the shadcn CLI cannot resolve unpublished packages.
+- Their logic MUST instead be distributed as `registry:lib` items (`dllm-viz-core`, `dllm-viz-react`) that visual items declare in `registryDependencies`.
+- The lib item files MUST be generated from `packages/core` and `packages/react` sources by a build script. Hand-maintained duplicates are not permitted.
+- After Phase 5 npm publication, registry items SHOULD switch to ordinary npm `dependencies`.
 
 ---
 
@@ -1824,7 +1937,7 @@ Exit criteria:
 
 Deliverables:
 
-- versioned packages,
+- versioned packages published to npm (`@dllm-viz/core`, `@dllm-viz/react`); registry items switch from `registry:lib` dependencies to npm dependencies,
 - public documentation,
 - GitHub registry installation,
 - registry directory namespace submission,
@@ -1888,18 +2001,21 @@ The project is ready for an initial stable release when:
 
 ## 27. Open questions
 
-These questions do not block phase 0 but should be resolved before schema `1.0`.
+Resolved:
+
+- ~~Q2: Should adapters be separate npm packages from the start?~~ → **No.** Single `@dllm-viz/adapters` package initially (see §8.3).
+- ~~Q4: Should token distributions use probability, log-probability, or allow both?~~ → **Allow both.** `Candidate` carries `probability` and/or `logit`; at least one MUST be present.
+- ~~Q7: Slot identity?~~ → **Deterministic adapter-issued monotonic IDs** (D-013).
+- ~~Q9: Zod vs JSON Schema as canonical source?~~ → **Zod is canonical**, JSON Schema is generated (D-012).
+
+Open — these do not block phase 0 but should be resolved before schema `1.0`:
 
 1. Should the trace schema be maintained as a standalone language-neutral specification?
-2. Should adapters be separate npm packages from the start?
-3. Should the Python exporter live here or in Unturtle?
-4. Should token distributions use probability, log-probability, or allow both?
-5. How should batch generation be represented: one trace per sample or one trace with lanes?
-6. How should branching/corrector sampling be represented?
-7. Should variable-length slot identity use UUIDs, deterministic position-derived IDs, or adapter-defined IDs?
-8. Should annotations be embedded in traces or stored in a sidecar file?
-9. Should schema validation use Zod as the canonical source and emit JSON Schema, or vice versa?
-10. Which project name is clearest: `dllm-viz`, `diffusion-ui`, `diffusion-language-ui`, or an Unturtle-associated name?
+2. Should the Python exporter live here or in Unturtle?
+3. How should batch generation be represented: one trace per sample or one trace with lanes?
+4. How should branching/corrector sampling be represented?
+5. Should annotations be embedded in traces or stored in a sidecar file?
+6. Which project name is clearest: `dllm-viz`, `diffusion-ui`, `diffusion-language-ui`, or an Unturtle-associated name?
 
 ---
 
