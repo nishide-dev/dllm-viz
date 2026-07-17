@@ -1838,7 +1838,7 @@ git commit -m "feat(core): deterministic playback state machine"
 - Consumes: `parseTrace`, `StreamEventSchema`, fixtures, `DiffusionSnapshot`.
 - Produces:
   - `parseTraceJson(text: string, options?: ValidateOptions): DiffusionTrace`
-  - `parseTraceJsonl(text: string, options?: ValidateOptions): DiffusionTrace` — line 1 MUST be a `metadata` event; later lines are `frame` / `checkpoint` / `final` events in order; a missing `final` still yields a valid (partial) trace (spec §14.3).
+  - `parseTraceJsonl(text: string, options?: ValidateOptions): DiffusionTrace` — line 1 MUST be a `metadata` event; later lines are `frame` / `checkpoint` / `final` events in order. After a `final` event, any subsequent event MUST throw because final closes the logical trace. A missing `final` still yields a valid (partial) trace. Metadata MAY include optional frames/checkpoints; the codec leaves the metadata payload intact and does not reject its optional trace fields (spec §14.3).
   - `describeSnapshot(snapshot: DiffusionSnapshot, frameCount: number): string` — returns e.g. `"Step 3 of 7. 2 tokens committed, 2 masked, 0 remasked."` (spec §18); counts `committed`+`fixed` as committed, `renoised` as remasked, over non-prompt slots.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1882,6 +1882,22 @@ describe("codec", () => {
     const parsed = parseTraceJsonl(partial)
     expect(parsed.frames).toHaveLength(3)
     expect(parsed.final).toBeUndefined()
+  })
+
+  it("rejects a frame event after final closes the trace", () => {
+    const lines = toJsonl().trim().split("\n")
+    expect(() => parseTraceJsonl([...lines, lines[1]].join("\n"))).toThrow(
+      /event after final/
+    )
+  })
+
+  it("rejects a duplicate final event", () => {
+    const lines = toJsonl().trim().split("\n")
+    const final = lines.at(-1)
+    expect(final).toBeDefined()
+    expect(() => parseTraceJsonl([...lines, final].join("\n"))).toThrow(
+      /event after final/
+    )
   })
 
   it("rejects a stream that does not start with metadata", () => {
@@ -1967,6 +1983,11 @@ export function parseTraceJsonl(
     checkpoints: [...(first.trace.checkpoints ?? [])],
   }
   for (const event of rest) {
+    if (assembled.final !== undefined) {
+      throw new Error(
+        "parseTraceJsonl: event after final — final closes the trace"
+      )
+    }
     if (event.type === "frame") assembled.frames.push(event.frame)
     else if (event.type === "checkpoint")
       assembled.checkpoints.push(event.checkpoint)

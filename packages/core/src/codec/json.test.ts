@@ -36,6 +36,22 @@ describe("codec", () => {
     expect(parsed.final).toBeUndefined()
   })
 
+  it("rejects a frame event after final closes the trace", () => {
+    const lines = toJsonl().trim().split("\n")
+    expect(() => parseTraceJsonl([...lines, lines[1]].join("\n"))).toThrow(
+      /event after final/
+    )
+  })
+
+  it("rejects a duplicate final event", () => {
+    const lines = toJsonl().trim().split("\n")
+    const final = lines.at(-1)
+    expect(final).toBeDefined()
+    expect(() => parseTraceJsonl([...lines, final].join("\n"))).toThrow(
+      /event after final/
+    )
+  })
+
   it("rejects a stream that does not start with metadata", () => {
     const lines = toJsonl().trim().split("\n")
     expect(() => parseTraceJsonl(lines.slice(1).join("\n"))).toThrow(/metadata/)

@@ -34,3 +34,37 @@ public exports from `@dllm-viz/core`.
 ## Concerns
 
 None.
+
+---
+
+## Review fix: final closes the logical trace
+
+### What changed
+
+- Added a `parseTraceJsonl` guard that rejects every stream event after a
+  `final` event, including a duplicate `final`.
+- Added regression tests for a frame after final and a duplicate final.
+- Updated the Task 6 plan and task brief to preserve the spec decision.
+- Metadata payloads were left intact: metadata-internal frames/final are NOT
+  rejected by the codec.
+
+### TDD and verification
+
+- RED:
+  `pnpm --filter @dllm-viz/core exec vitest run src/codec/json.test.ts`
+  failed in the two new tests for the expected missing guard.
+- GREEN:
+  `pnpm --filter @dllm-viz/core exec vitest run src/codec`
+  passed: 1 file, 7 tests.
+- Full:
+  `pnpm lint && pnpm typecheck && pnpm test`
+  passed: lint 4/4 tasks, typecheck 4/4 tasks, and all test tasks; core passed
+  7 files and 47 tests.
+
+### Files changed
+
+- `packages/core/src/codec/json.ts`
+- `packages/core/src/codec/json.test.ts`
+- `docs/superpowers/plans/2026-07-18-phase0-1-trace-core-mvp.md`
+- `.superpowers/sdd/task-6-brief.md`
+- `.superpowers/sdd/task-6-report.md`

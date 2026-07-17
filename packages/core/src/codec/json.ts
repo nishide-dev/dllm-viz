@@ -38,6 +38,11 @@ export function parseTraceJsonl(
     checkpoints: [...(first.trace.checkpoints ?? [])],
   }
   for (const event of rest) {
+    if (assembled.final !== undefined) {
+      throw new Error(
+        "parseTraceJsonl: event after final — final closes the trace"
+      )
+    }
     if (event.type === "frame") assembled.frames.push(event.frame)
     else if (event.type === "checkpoint")
       assembled.checkpoints.push(event.checkpoint)
