@@ -132,7 +132,7 @@ export function createPlayer(
       if (status === "playing") return
       if (status === "ended") seekTo(0)
       status = "playing"
-      cachedSnapshot = null
+      notify()
       scheduleTick()
     },
     pause() {

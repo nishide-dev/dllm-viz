@@ -1586,15 +1586,26 @@ describe("createPlayer", () => {
     expect(p.trace.final?.text).toBe("done")
   })
 
+  it("play notifies subscribers immediately so status is visible without a tick", () => {
+    const p = createPlayer(maskedRemaskTrace, { frameIntervalMs: 100 })
+    const listener = vi.fn()
+    p.subscribe(listener)
+    p.play()
+    expect(listener).toHaveBeenCalledTimes(1)
+  })
+
   it("dispose stops the timer and drops listeners", () => {
     const p = createPlayer(maskedRemaskTrace, { frameIntervalMs: 100 })
     const listener = vi.fn()
     p.subscribe(listener)
     p.play()
+    // play() itself notifies once (status change visible without a tick);
+    // dispose must prevent any *further* notifications from pending ticks.
+    expect(listener).toHaveBeenCalledTimes(1)
     p.dispose()
     vi.advanceTimersByTime(500)
     expect(p.frameIndex).toBe(0)
-    expect(listener).not.toHaveBeenCalled()
+    expect(listener).toHaveBeenCalledTimes(1)
   })
 })
 ```
@@ -1809,7 +1820,7 @@ export function createPlayer(
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm --filter @dllm-viz/core exec vitest run src/player/player.test.ts`
-Expected: PASS (12 tests).
+Expected: PASS (13 tests).
 
 - [ ] **Step 5: Export, verify, commit**
 

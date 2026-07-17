@@ -45,6 +45,14 @@ describe("createPlayer", () => {
     expect(p.getSnapshot()).not.toBe(before)
   })
 
+  it("play notifies subscribers immediately so status is visible without a tick", () => {
+    const p = createPlayer(maskedRemaskTrace, { frameIntervalMs: 100 })
+    const listener = vi.fn()
+    p.subscribe(listener)
+    p.play()
+    expect(listener).toHaveBeenCalledTimes(1)
+  })
+
   it("play advances on the timer and ends after the last frame", () => {
     const p = createPlayer(maskedRemaskTrace, { frameIntervalMs: 100 })
     const listener = vi.fn()
@@ -142,9 +150,12 @@ describe("createPlayer", () => {
     const listener = vi.fn()
     p.subscribe(listener)
     p.play()
+    // play() itself notifies once (status change visible without a tick);
+    // dispose must prevent any *further* notifications from pending ticks.
+    expect(listener).toHaveBeenCalledTimes(1)
     p.dispose()
     vi.advanceTimersByTime(500)
     expect(p.frameIndex).toBe(0)
-    expect(listener).not.toHaveBeenCalled()
+    expect(listener).toHaveBeenCalledTimes(1)
   })
 })
