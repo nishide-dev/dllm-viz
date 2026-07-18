@@ -33,6 +33,11 @@ export function CommitHeatmapDemo() {
         <h2 className="font-medium text-sm">
           Dense canvas mode (generated 256×512 benchmark trace)
         </h2>
+        <p className="max-w-prose text-muted-foreground text-sm">
+          Synthetic load-test trace: token texts are meaningless placeholders.
+          This demo shows rendering and seek performance at 256 slots × 512
+          frames — not real language generation.
+        </p>
         <DiffusionSelectionProvider>
           <DiffusionTraceProvider trace={denseTrace}>
             <CommitHeatmap />
