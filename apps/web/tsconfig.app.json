@@ -30,8 +30,10 @@
         "./node_modules/@types/react/jsx-dev-runtime.d.ts"
       ],
       "react": ["./node_modules/@types/react/index.d.ts"],
-      "react-dom": ["./node_modules/@types/react-dom/index.d.ts"]
+      "react-dom": ["./node_modules/@types/react-dom/index.d.ts"],
+      "lucide-react": ["./node_modules/lucide-react/dist/lucide-react.d.ts"]
     }
   },
-  "include": ["src", "../../registry"]
+  "include": ["src", "../../registry"],
+  "exclude": ["../../registry/default/lib"]
 }

@@ -14,20 +14,25 @@ pnpm dev
 
 ```
 apps/
-  web/          # Vite + React アプリ
+  web/          # Vite + React アプリ (static docs/demo site)
 packages/
-  ui/           # 共有 UI コンポーネント (@workspace/ui)
+  core/         # @dllm-viz/core — trace schema, playback engine (no React)
+  react/        # @dllm-viz/react — headless provider/hooks
+  ui/           # 共有 UI コンポーネント (@workspace/ui, internal demo foundation)
+registry/       # shadcn registry source (registry.json + registry/default/*)
 ```
 
 ## Commands
 
 ```bash
-pnpm dev          # 開発サーバー起動
-pnpm build        # ビルド
-pnpm test         # テスト実行
-pnpm lint         # Biome check(lint + format 検査)
-pnpm format       # Biome check --write(format + lint 自動修正)
-pnpm typecheck    # TypeScript 型チェック
+pnpm dev             # 開発サーバー起動
+pnpm build           # ビルド
+pnpm test            # テスト実行
+pnpm lint            # Biome check(lint + format 検査)
+pnpm format          # Biome check --write(format + lint 自動修正)
+pnpm typecheck       # TypeScript 型チェック
+pnpm registry:build  # packages/core, packages/react から registry/default/lib
+                     # と registry.json を再生成
 ```
 
 ## Adding shadcn/ui Components
@@ -42,4 +47,13 @@ pnpm dlx shadcn@latest add button -c apps/web
 
 ```tsx
 import { Button } from "@workspace/ui/components/button"
+```
+
+## Installing dLLM Viz Components
+
+`registry.json` は shadcn CLI 経由でインストール可能な dLLM 可視化コンポーネント
+(`DenoisingTokenCanvas`, `DiffusionStepControls`, `TraceInspector`) を提供する:
+
+```bash
+pnpm dlx shadcn@latest add nishide-dev/dllm-viz/denoising-token-canvas
 ```

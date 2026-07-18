@@ -9,7 +9,8 @@
     "lint": "turbo lint",
     "format": "turbo format",
     "typecheck": "turbo typecheck",
-    "test": "turbo test"
+    "test": "turbo test",
+    "registry:build": "node scripts/build-registry.mjs && biome check --write --no-errors-on-unmatched registry/default/lib registry.json"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.4",

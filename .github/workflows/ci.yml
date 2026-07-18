@@ -27,6 +27,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Registry up to date
+        run: |
+          pnpm registry:build
+          git diff --exit-code registry.json registry/default/lib
+
       - name: Lint
         run: pnpm turbo lint
 
