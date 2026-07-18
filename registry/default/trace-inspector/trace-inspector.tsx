@@ -7,6 +7,7 @@ import type {
 import {
   useDiffusionPlayer,
   useDiffusionSnapshot,
+  useOptionalSlotSelection,
   useTraceProvenance,
 } from "@/lib/dllm-viz-react"
 import { cn } from "@/lib/utils"
@@ -112,13 +113,19 @@ function ProvenanceBadge({
 }
 
 export function TraceInspector({
-  selectedSlotId = null,
+  selectedSlotId,
   className,
 }: TraceInspectorProps) {
   const player = useDiffusionPlayer()
   const snapshot = useDiffusionSnapshot()
   const provenance = useTraceProvenance()
-  const slot = snapshot.slots.find((s) => s.slotId === selectedSlotId)
+  const selection = useOptionalSlotSelection()
+  // Explicit prop (including null) wins; undefined falls back to context.
+  const activeSelectedId =
+    selectedSlotId !== undefined
+      ? selectedSlotId
+      : (selection?.selectedSlotId ?? null)
+  const slot = snapshot.slots.find((s) => s.slotId === activeSelectedId)
 
   if (!slot) {
     return (

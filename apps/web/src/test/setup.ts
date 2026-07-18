@@ -14,3 +14,8 @@ if (!window.matchMedia) {
     removeEventListener: () => {},
   })) as unknown as typeof window.matchMedia
 }
+
+// jsdom has no canvas implementation; return null quietly so canvas-mode
+// components take their guarded no-paint branch without console noise.
+HTMLCanvasElement.prototype.getContext = (() =>
+  null) as typeof HTMLCanvasElement.prototype.getContext

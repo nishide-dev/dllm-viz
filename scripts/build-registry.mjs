@@ -115,6 +115,26 @@ const registry = {
       "Trace Inspector",
       "Exact slot/frame data with provenance labels."
     ),
+    componentItem(
+      "commit-heatmap",
+      "Commit Heatmap",
+      "Position × time heatmap with DOM and Canvas rendering modes."
+    ),
+    componentItem(
+      "candidate-distribution",
+      "Candidate Distribution",
+      "Ranked top-k candidates with entropy, margin, churn, and omitted mass."
+    ),
+    componentItem(
+      "block-diffusion-canvas",
+      "Block Diffusion Canvas",
+      "Outer canvas progress with a nested active canvas and inner steps."
+    ),
+    componentItem(
+      "diffusion-comparison",
+      "Diffusion Comparison",
+      "Synchronized side-by-side trace playback with an explicit sync rule."
+    ),
   ],
 }
 

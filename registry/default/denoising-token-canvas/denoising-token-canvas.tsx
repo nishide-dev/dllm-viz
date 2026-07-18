@@ -3,6 +3,7 @@ import { describeSnapshot } from "@/lib/dllm-viz-core"
 import {
   useDiffusionPlayer,
   useDiffusionSnapshot,
+  useOptionalSlotSelection,
   useReducedMotion,
   useTraceProvenance,
 } from "@/lib/dllm-viz-react"
@@ -38,7 +39,7 @@ function slotLabel(slot: TokenSlot): string {
 export function DenoisingTokenCanvas({
   showPrompt = true,
   showTokenIds = false,
-  selectedSlotId = null,
+  selectedSlotId,
   onSlotSelect,
   className,
 }: DenoisingTokenCanvasProps) {
@@ -46,6 +47,16 @@ export function DenoisingTokenCanvas({
   const snapshot = useDiffusionSnapshot()
   const provenance = useTraceProvenance()
   const reducedMotion = useReducedMotion()
+  const selection = useOptionalSlotSelection()
+  // Explicit prop (including null) wins; undefined falls back to context.
+  const activeSelectedId =
+    selectedSlotId !== undefined
+      ? selectedSlotId
+      : (selection?.selectedSlotId ?? null)
+  const handleSelect = (slotId: string) => {
+    selection?.setSelectedSlotId(slotId)
+    onSlotSelect?.(slotId)
+  }
   const slots = showPrompt
     ? snapshot.slots
     : snapshot.slots.filter(
@@ -71,16 +82,16 @@ export function DenoisingTokenCanvas({
         {slots.map((slot) => (
           <button
             aria-label={slotLabel(slot)}
-            aria-pressed={slot.slotId === selectedSlotId}
+            aria-pressed={slot.slotId === activeSelectedId}
             className={cn(
               "rounded border px-1.5 py-0.5 focus-visible:outline-2 focus-visible:outline-ring",
               !reducedMotion && "transition-colors duration-200",
               STATE_CLASSES[slot.state],
-              slot.slotId === selectedSlotId && "ring-2 ring-ring"
+              slot.slotId === activeSelectedId && "ring-2 ring-ring"
             )}
             data-state={slot.state}
             key={slot.slotId}
-            onClick={() => onSlotSelect?.(slot.slotId)}
+            onClick={() => handleSelect(slot.slotId)}
             type="button"
           >
             {slot.state === "masked" ? (

@@ -1,0 +1,306 @@
+{
+  "schemaVersion": "0.1",
+  "createdAt": "2026-07-18T00:00:00Z",
+  "source": {
+    "adapter": "hand-authored",
+    "adapterVersion": "0.0.1"
+  },
+  "geometry": {
+    "timeDomain": "discrete",
+    "stateSpace": "token",
+    "generationMode": "canvas-diffusion"
+  },
+  "provenance": {
+    "mode": "illustrative",
+    "notes": ["Hand-authored for demos and tests. Not real model output."]
+  },
+  "traceId": "fixture-block-canvas",
+  "generation": {
+    "algorithm": "illustrative-block",
+    "canvasCount": 2,
+    "canvasLength": 3,
+    "totalSteps": 2
+  },
+  "prompt": {
+    "text": "List two colors:",
+    "slotIds": ["s0"]
+  },
+  "initial": {
+    "checkpointId": "cp-init",
+    "frameOrdinal": -1,
+    "slots": [
+      {
+        "slotId": "s0",
+        "index": 0,
+        "state": "prompt",
+        "region": "prompt",
+        "text": "List two colors:"
+      },
+      {
+        "slotId": "s1",
+        "index": 1,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s2",
+        "index": 2,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s3",
+        "index": 3,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s4",
+        "index": 4,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s5",
+        "index": 5,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s6",
+        "index": 6,
+        "state": "masked",
+        "region": "completion"
+      }
+    ]
+  },
+  "frames": [
+    {
+      "frameId": "f0",
+      "ordinal": 0,
+      "kind": "initial",
+      "operations": []
+    },
+    {
+      "frameId": "f1",
+      "ordinal": 1,
+      "kind": "canvas-start",
+      "canvasIndex": 0,
+      "operations": []
+    },
+    {
+      "frameId": "f2",
+      "ordinal": 2,
+      "kind": "denoise",
+      "canvasIndex": 0,
+      "innerStep": 1,
+      "operations": [
+        {
+          "type": "commit",
+          "slotId": "s2",
+          "tokenId": 402,
+          "text": " red",
+          "confidence": 0.9
+        }
+      ],
+      "metrics": {
+        "maskedCount": 5,
+        "committedThisFrame": 1
+      }
+    },
+    {
+      "frameId": "f3",
+      "ordinal": 3,
+      "kind": "denoise",
+      "canvasIndex": 0,
+      "innerStep": 2,
+      "operations": [
+        {
+          "type": "commit",
+          "slotId": "s1",
+          "tokenId": 401,
+          "text": " One:",
+          "confidence": 0.85
+        },
+        {
+          "type": "commit",
+          "slotId": "s3",
+          "tokenId": 403,
+          "text": ",",
+          "confidence": 0.96
+        }
+      ],
+      "metrics": {
+        "maskedCount": 3,
+        "committedThisFrame": 2
+      }
+    },
+    {
+      "frameId": "f4",
+      "ordinal": 4,
+      "kind": "canvas-commit",
+      "canvasIndex": 0,
+      "operations": [
+        {
+          "type": "set-token",
+          "slotId": "s1",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s2",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s3",
+          "state": "fixed"
+        }
+      ]
+    },
+    {
+      "frameId": "f5",
+      "ordinal": 5,
+      "kind": "canvas-start",
+      "canvasIndex": 1,
+      "operations": []
+    },
+    {
+      "frameId": "f6",
+      "ordinal": 6,
+      "kind": "denoise",
+      "canvasIndex": 1,
+      "innerStep": 1,
+      "operations": [
+        {
+          "type": "commit",
+          "slotId": "s6",
+          "tokenId": 406,
+          "text": ".",
+          "confidence": 0.98
+        }
+      ],
+      "metrics": {
+        "maskedCount": 2,
+        "committedThisFrame": 1
+      }
+    },
+    {
+      "frameId": "f7",
+      "ordinal": 7,
+      "kind": "denoise",
+      "canvasIndex": 1,
+      "innerStep": 2,
+      "operations": [
+        {
+          "type": "commit",
+          "slotId": "s4",
+          "tokenId": 404,
+          "text": " Two:",
+          "confidence": 0.88
+        },
+        {
+          "type": "commit",
+          "slotId": "s5",
+          "tokenId": 405,
+          "text": " blue",
+          "confidence": 0.92
+        }
+      ],
+      "metrics": {
+        "maskedCount": 0,
+        "committedThisFrame": 2
+      }
+    },
+    {
+      "frameId": "f8",
+      "ordinal": 8,
+      "kind": "canvas-commit",
+      "canvasIndex": 1,
+      "operations": [
+        {
+          "type": "set-token",
+          "slotId": "s4",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s5",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s6",
+          "state": "fixed"
+        }
+      ]
+    },
+    {
+      "frameId": "f9",
+      "ordinal": 9,
+      "kind": "final",
+      "operations": []
+    }
+  ],
+  "checkpoints": [
+    {
+      "checkpointId": "cp-1",
+      "frameOrdinal": 4,
+      "slots": [
+        {
+          "slotId": "s0",
+          "index": 0,
+          "state": "prompt",
+          "region": "prompt",
+          "text": "List two colors:"
+        },
+        {
+          "slotId": "s1",
+          "index": 1,
+          "state": "fixed",
+          "region": "completion",
+          "tokenId": 401,
+          "text": " One:"
+        },
+        {
+          "slotId": "s2",
+          "index": 2,
+          "state": "fixed",
+          "region": "completion",
+          "tokenId": 402,
+          "text": " red"
+        },
+        {
+          "slotId": "s3",
+          "index": 3,
+          "state": "fixed",
+          "region": "completion",
+          "tokenId": 403,
+          "text": ","
+        },
+        {
+          "slotId": "s4",
+          "index": 4,
+          "state": "masked",
+          "region": "completion"
+        },
+        {
+          "slotId": "s5",
+          "index": 5,
+          "state": "masked",
+          "region": "completion"
+        },
+        {
+          "slotId": "s6",
+          "index": 6,
+          "state": "masked",
+          "region": "completion"
+        }
+      ]
+    }
+  ],
+  "final": {
+    "text": "List two colors: One: red, Two: blue.",
+    "finishReason": "completed"
+  }
+}

@@ -3056,7 +3056,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
   - `DiffusionComparison(props: DiffusionComparisonProps)` where `DiffusionComparisonProps = { panes: [ComparisonPane, ComparisonPane]; defaultSyncRule?: ComparisonSyncRule; renderTrace?: (trace: DiffusionTrace) => ReactNode; className?: string }`, `ComparisonPane = { trace: DiffusionTrace; label: string }` (labels must be distinct — they are used as React keys), `ComparisonSyncRule = "frame-ordinal" | "completion-ratio"`.
   - Renders two independent `DiffusionTraceProvider`s driven by one master position; `renderTrace` (rendered inside each pane's provider) lets demos compose `DenoisingTokenCanvas` etc. without cross-registry-item imports; the built-in `PanePreview` token strip is the default.
   - Exported pure helper `paneFrameIndex(masterIndex, masterCount, paneCount, rule): number` — ordinal clamps to pane length; ratio maps proportionally.
-  - Spec §15.7 rules: the selected sync rule is visible (labeled `<select>` + plain-text "Synced by …" line) and the UI never implies frame equivalence — ordinal mode with differing frame counts shows "equal ordinals are NOT equivalent steps"; ratio mode always states positions are proportional.
+  - Spec §15.7 rules: the selected sync rule is visible (labeled `<select>` + plain-text "Synced by …" line) and the UI never implies frame equivalence — frame-ordinal mode always shows "Equal ordinals are NOT equivalent steps." (even when frame counts match); completion-ratio mode always states positions are proportional.
 
 - [ ] **Step 1: Write the failing tests** (`apps/web/src/components/diffusion-comparison.test.tsx`)
 
@@ -3064,7 +3064,11 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
-import { arBaselineTrace, maskedRemaskTrace } from "@/lib/dllm-viz-core"
+import {
+  arBaselineTrace,
+  confidenceCommitTrace,
+  maskedRemaskTrace,
+} from "@/lib/dllm-viz-core"
 import {
   DiffusionComparison,
   paneFrameIndex,
@@ -3098,9 +3102,26 @@ describe("DiffusionComparison", () => {
     expect(screen.getByText(/synced by frame ordinal/i)).toBeInTheDocument()
   })
 
-  it("warns that differing frame counts are not equivalent steps", () => {
+  it("warns that frame-ordinal sync does not imply equivalent steps", () => {
     setup()
-    expect(screen.getByText(/not equivalent steps/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/equal ordinals are not equivalent steps/i)
+    ).toBeInTheDocument()
+  })
+
+  it("warns in frame-ordinal mode when frame counts match but algorithms differ", () => {
+    render(
+      <DiffusionComparison
+        panes={[
+          { trace: confidenceCommitTrace, label: "Confidence commit" },
+          { trace: arBaselineTrace, label: "Autoregressive baseline" },
+        ]}
+      />
+    )
+    expect(screen.getAllByText(/frame 1\/5/)).toHaveLength(2)
+    expect(
+      screen.getByText(/equal ordinals are not equivalent steps/i)
+    ).toBeInTheDocument()
   })
 
   it("advances both panes from the shared controls (frame-ordinal)", async () => {
@@ -3265,8 +3286,6 @@ export function DiffusionComparison({
     panes[1].trace.frames.length
   )
   const clampedMaster = Math.min(masterIndex, masterCount - 1)
-  const frameCountsDiffer =
-    panes[0].trace.frames.length !== panes[1].trace.frames.length
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
@@ -3315,8 +3334,7 @@ export function DiffusionComparison({
       <p className="font-mono text-muted-foreground text-xs">
         Synced by {SYNC_RULE_LABELS[syncRule]}.
         {syncRule === "frame-ordinal" &&
-          frameCountsDiffer &&
-          " Frame counts differ — equal ordinals are NOT equivalent steps."}
+          " Equal ordinals are NOT equivalent steps."}
         {syncRule === "completion-ratio" &&
           " Positions are proportional — frames are not step-equivalent."}
       </p>
