@@ -299,7 +299,6 @@ function DomModeView({
   )
 }
 
-// Canvas mode is implemented in the next task (dense traces, spec §19.2).
 function CanvasModeView({
   matrix,
   metric,
