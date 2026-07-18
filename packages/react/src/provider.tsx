@@ -1,7 +1,7 @@
 import type { DiffusionTrace, TracePlayer } from "@dllm-viz/core"
 import { createPlayer } from "@dllm-viz/core"
 import type { ReactNode } from "react"
-import { createContext, useEffect, useMemo } from "react"
+import { createContext, useEffect, useMemo, useRef } from "react"
 
 export const PlayerContext = createContext<TracePlayer | null>(null)
 
@@ -22,13 +22,17 @@ export function DiffusionTraceProvider({
   frameIntervalMs,
   children,
 }: DiffusionTraceProviderProps) {
-  // Player identity follows the trace object; playback options are
-  // applied at creation time only.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: options are creation-time only
-  const player = useMemo(
-    () => createPlayer(trace, { initialFrame, playbackRate, frameIntervalMs }),
-    [trace]
-  )
+  // Player identity follows the trace object; initialFrame and
+  // frameIntervalMs are applied at creation time only, read through a ref
+  // so option props never recreate the player.
+  const optionsRef = useRef({ initialFrame, playbackRate, frameIntervalMs })
+  optionsRef.current = { initialFrame, playbackRate, frameIntervalMs }
+  const player = useMemo(() => createPlayer(trace, optionsRef.current), [trace])
+
+  // playbackRate is live: prop changes after mount take effect (spec §10.2).
+  useEffect(() => {
+    player.setPlaybackRate(playbackRate)
+  }, [player, playbackRate])
 
   useEffect(() => {
     if (autoPlay) player.play()

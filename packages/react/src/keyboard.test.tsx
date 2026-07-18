@@ -1,7 +1,7 @@
 import { maskedRemaskTrace } from "@dllm-viz/core"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type { ReactElement } from "react"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { useDiffusionSnapshot } from "./hooks"
 import { useDiffusionKeyboard } from "./keyboard"
@@ -49,10 +49,19 @@ describe("useDiffusionKeyboard", () => {
     expect(screen.getByRole("status")).toHaveTextContent("0")
   })
 
-  it("Space toggles playback", () => {
-    setup()
-    fireEvent.keyDown(window, { key: " " })
-    expect(screen.getByRole("status")).toBeInTheDocument()
+  it("Space starts playback and frames advance", () => {
+    vi.useFakeTimers()
+    try {
+      setup()
+      fireEvent.keyDown(window, { key: " " })
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+      const frameIndex = Number(screen.getByRole("status").textContent)
+      expect(frameIndex).toBeGreaterThan(0)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("does not steal keys from text inputs (spec §15.2)", () => {
