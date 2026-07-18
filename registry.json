@@ -102,6 +102,11 @@
           "path": "registry/default/lib/dllm-viz-react/reduced-motion.ts",
           "type": "registry:lib",
           "target": "lib/dllm-viz-react/reduced-motion.ts"
+        },
+        {
+          "path": "registry/default/lib/dllm-viz-react/selection.tsx",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-react/selection.tsx"
         }
       ],
       "dependencies": ["react"]
