@@ -92,7 +92,8 @@ const registry = {
       "dllm-viz-react",
       "dLLM Viz React",
       "Headless provider and hooks for diffusion trace playback.",
-      reactFiles
+      reactFiles,
+      { dependencies: ["react"] }
     ),
     componentItem(
       "denoising-token-canvas",

@@ -9,7 +9,8 @@ export function materializeSlots(
   trace: DiffusionTrace,
   frameIndex: number
 ): TokenSlot[] {
-  if (frameIndex === -1) return trace.initial.slots
+  // Copy so callers never hold a reference into the trace object itself.
+  if (frameIndex === -1) return [...trace.initial.slots]
   if (frameIndex < -1 || frameIndex >= trace.frames.length) {
     throw new RangeError(
       `frameIndex ${frameIndex} out of range [-1, ${trace.frames.length - 1}]`
@@ -25,7 +26,7 @@ export function materializeSlots(
       base = cp
     }
   }
-  let slots = base.slots
+  let slots: TokenSlot[] = [...base.slots]
   for (let i = 0; i <= frameIndex; i++) {
     const frame = trace.frames[i]
     if (frame.ordinal <= base.frameOrdinal) continue

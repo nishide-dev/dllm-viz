@@ -63,4 +63,23 @@ describe("DenoisingTokenCanvas", () => {
     renderAt(0)
     expect(screen.getByText("illustrative")).toBeInTheDocument()
   })
+
+  it("drops transitions under prefers-reduced-motion but keeps content", () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })
+    )
+    try {
+      renderAt(5)
+      const button = screen.getByRole("button", { name: /blue.*committed/i })
+      expect(button.className).not.toContain("transition-colors")
+      expect(button).toHaveTextContent("blue")
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
 })

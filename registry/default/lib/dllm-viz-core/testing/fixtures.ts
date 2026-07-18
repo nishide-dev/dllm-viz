@@ -25,8 +25,9 @@ const sharedMeta = {
 
 /**
  * Masked diffusion where visible tokens are never revised.
- * Prompt "Q: color of grass?" then commits " Grass", " is", " green", "."
- * two per frame, with a mid-trace checkpoint after frame ordinal 1.
+ * Prompt "Q: color of grass?" then commits " green" and "." (frame 1)
+ * followed by " Grass" and " is" (frame 2) — deliberately not
+ * left-to-right — with a mid-trace checkpoint after frame ordinal 1.
  */
 export const maskedBasicTrace: DiffusionTrace = {
   ...sharedMeta,

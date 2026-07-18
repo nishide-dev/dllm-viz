@@ -140,24 +140,30 @@ export function TraceInspector({
   const distribution = latestDistribution(currentHistory)
   const lastConfidence = latestConfidence(currentHistory)
 
-  const field = (label: string, value: string | number | undefined) =>
+  // Provenance lookups use the canonical camelCase field keys from the
+  // trace schema (`provenance.fields`), not the human-readable labels.
+  const field = (
+    key: string,
+    label: string,
+    value: string | number | undefined
+  ) =>
     value === undefined ? null : (
       <div className="flex items-baseline gap-2">
         <dt className="w-24 shrink-0 text-muted-foreground">{label}</dt>
         <dd className="font-mono">{value}</dd>
-        <ProvenanceBadge provenance={provenance} fieldKey={label} />
+        <ProvenanceBadge provenance={provenance} fieldKey={key} />
       </div>
     )
 
   return (
     <div className={cn("flex flex-col gap-3 text-sm", className)}>
       <dl className="flex flex-col gap-1">
-        {field("slot", slot.slotId)}
-        {field("index", slot.index)}
-        {field("token id", slot.tokenId)}
-        {field("text", slot.text)}
-        {field("state", slot.state)}
-        {field("confidence", lastConfidence?.toFixed(2))}
+        {field("slotId", "slot", slot.slotId)}
+        {field("index", "index", slot.index)}
+        {field("tokenId", "token id", slot.tokenId)}
+        {field("text", "text", slot.text)}
+        {field("state", "state", slot.state)}
+        {field("confidence", "confidence", lastConfidence?.toFixed(2))}
       </dl>
       {distribution && (
         <div>
@@ -183,7 +189,7 @@ export function TraceInspector({
                 </span>
                 <ProvenanceBadge
                   provenance={provenance}
-                  fieldKey="omitted mass"
+                  fieldKey="omittedMass"
                 />
               </li>
             )}

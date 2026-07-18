@@ -22,9 +22,20 @@ export function parseTraceJsonl(
     throw new Error("parseTraceJsonl: empty input")
   }
   const events = lines.map((line, i) => {
-    const result = StreamEventSchema.safeParse(JSON.parse(line))
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(line)
+    } catch {
+      throw new Error(`parseTraceJsonl: malformed JSON on line ${i + 1}`)
+    }
+    const result = StreamEventSchema.safeParse(parsed)
     if (!result.success) {
-      throw new Error(`parseTraceJsonl: invalid event on line ${i + 1}`)
+      const detail = result.error.issues
+        .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+        .join("; ")
+      throw new Error(
+        `parseTraceJsonl: invalid event on line ${i + 1} (${detail})`
+      )
     }
     return result.data
   })

@@ -33,7 +33,7 @@ export function useDiffusionFrame(): DiffusionFrame | undefined {
   return useDiffusionSnapshot().frame
 }
 
-export function useTokenSlots(): TokenSlot[] {
+export function useTokenSlots(): readonly TokenSlot[] {
   return useDiffusionSnapshot().slots
 }
 

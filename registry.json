@@ -93,7 +93,8 @@
           "type": "registry:lib",
           "target": "lib/dllm-viz-react/reduced-motion.ts"
         }
-      ]
+      ],
+      "dependencies": ["react"]
     },
     {
       "name": "denoising-token-canvas",

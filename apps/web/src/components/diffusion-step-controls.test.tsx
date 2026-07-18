@@ -1,8 +1,13 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
+import type { TracePlayer } from "@/lib/dllm-viz-core"
 import { maskedRemaskTrace } from "@/lib/dllm-viz-core"
-import { DiffusionTraceProvider } from "@/lib/dllm-viz-react"
+import {
+  DiffusionTraceProvider,
+  useDiffusionPlayer,
+} from "@/lib/dllm-viz-react"
+import { DenoisingTokenCanvas } from "@/registry/default/denoising-token-canvas/denoising-token-canvas"
 import { DiffusionStepControls } from "@/registry/default/diffusion-step-controls/diffusion-step-controls"
 
 const setup = () =>
@@ -59,5 +64,33 @@ describe("DiffusionStepControls", () => {
     setup()
     fireEvent.keyDown(window, { key: "ArrowRight" })
     expect(screen.getByText(/Frame 2\/7/)).toBeInTheDocument()
+  })
+
+  it("live-appended frames update the frame counter (spec §21.3)", () => {
+    // appendFrame rejects traces closed by `final`, so stream into an
+    // open copy of the fixture.
+    const { final: _final, ...openTrace } = maskedRemaskTrace
+    let player: TracePlayer | undefined
+    function PlayerProbe() {
+      player = useDiffusionPlayer()
+      return null
+    }
+    render(
+      <DiffusionTraceProvider trace={openTrace}>
+        <DenoisingTokenCanvas />
+        <DiffusionStepControls />
+        <PlayerProbe />
+      </DiffusionTraceProvider>
+    )
+    expect(screen.getByText(/Frame 1\/7/)).toBeInTheDocument()
+    act(() =>
+      player?.appendFrame({
+        frameId: "f7",
+        ordinal: 7,
+        kind: "denoise",
+        operations: [],
+      })
+    )
+    expect(screen.getByText(/Frame 1\/8/)).toBeInTheDocument()
   })
 })

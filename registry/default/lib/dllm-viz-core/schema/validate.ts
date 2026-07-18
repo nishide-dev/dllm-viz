@@ -89,6 +89,26 @@ export function parseTrace(
     }
   }
 
+  let lastCheckpointOrdinal = -1
+  for (const cp of trace.checkpoints ?? []) {
+    if (cp.frameOrdinal < 0) {
+      issues.push(`checkpoint "${cp.checkpointId}" frameOrdinal must be >= 0`)
+    }
+    if (cp.frameOrdinal <= lastCheckpointOrdinal) {
+      issues.push(
+        `checkpoint "${cp.checkpointId}" frameOrdinal ${cp.frameOrdinal} ` +
+          "is not increasing"
+      )
+    }
+    lastCheckpointOrdinal = cp.frameOrdinal
+    if (trace.frames.length > 0 && cp.frameOrdinal > lastOrdinal) {
+      issues.push(
+        `checkpoint "${cp.checkpointId}" frameOrdinal ${cp.frameOrdinal} ` +
+          `exceeds last frame ordinal ${lastOrdinal}`
+      )
+    }
+  }
+
   if (issues.length > 0) throw new TraceValidationError(issues)
   return trace
 }

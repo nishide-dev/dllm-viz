@@ -7,6 +7,7 @@ import type {
   TokenSlot,
   TraceCheckpoint,
 } from "../schema/types"
+import { DiffusionFrameSchema, TraceCheckpointSchema } from "../schema/zod"
 import { applyOperations } from "./apply"
 import { materializeSlots } from "./materialize"
 
@@ -31,24 +32,33 @@ export function createPlayer(
   trace: DiffusionTrace,
   options: PlayerOptions = {}
 ): TracePlayer {
-  // Clone the mutable collections so appendFrame/appendCheckpoint never
-  // mutate the caller's trace object.
+  // Give workingTrace its own identity (appendFrame/appendCheckpoint
+  // already copy-on-write) and normalize `checkpoints` to a defined array.
   let workingTrace: DiffusionTrace = {
     ...trace,
     frames: [...trace.frames],
     checkpoints: [...(trace.checkpoints ?? [])],
   }
-  let frameIndex = Math.min(
-    Math.max(options.initialFrame ?? 0, 0),
-    Math.max(workingTrace.frames.length - 1, 0)
-  )
+  // With no frames yet (live streaming), -1 means "initial slots".
+  let frameIndex =
+    workingTrace.frames.length === 0
+      ? -1
+      : Math.min(
+          Math.max(options.initialFrame ?? 0, 0),
+          workingTrace.frames.length - 1
+        )
   let rate = options.playbackRate ?? 1
   const frameIntervalMs = options.frameIntervalMs ?? 250
   let status: Status = "idle"
+  let disposed = false
   let slots: TokenSlot[] = materializeSlots(workingTrace, frameIndex)
   let cachedSnapshot: DiffusionSnapshot | null = null
   let timer: ReturnType<typeof setTimeout> | null = null
   const listeners = new Set<() => void>()
+
+  const assertNotDisposed = () => {
+    if (disposed) throw new Error("player is disposed")
+  }
 
   const notify = () => {
     cachedSnapshot = null
@@ -73,7 +83,16 @@ export function createPlayer(
       notify()
       return
     }
-    seekTo(frameIndex + 1)
+    try {
+      seekTo(frameIndex + 1)
+    } catch {
+      // A corrupt frame must not leave the player "playing" forever with a
+      // dead timer; pause so subscribers observe the stall.
+      status = "paused"
+      stopTimer()
+      notify()
+      return
+    }
     if (frameIndex >= workingTrace.frames.length - 1) {
       status = "ended"
       stopTimer()
@@ -84,8 +103,13 @@ export function createPlayer(
   }
 
   const seekTo = (target: number) => {
+    if (!Number.isInteger(target)) {
+      throw new Error(`seek target must be an integer, got ${target}`)
+    }
+    // With no frames the only valid position is -1 (initial slots).
+    const min = workingTrace.frames.length === 0 ? -1 : 0
     const clamped = Math.min(
-      Math.max(target, 0),
+      Math.max(target, min),
       workingTrace.frames.length - 1
     )
     if (clamped === frameIndex) return
@@ -129,6 +153,7 @@ export function createPlayer(
       return () => listeners.delete(listener)
     },
     play() {
+      assertNotDisposed()
       if (status === "playing") return
       if (status === "ended") seekTo(0)
       status = "playing"
@@ -146,21 +171,38 @@ export function createPlayer(
       else player.play()
     },
     seek(target) {
+      assertNotDisposed()
       seekTo(target)
     },
     stepForward(count = 1) {
+      assertNotDisposed()
       seekTo(frameIndex + count)
     },
     stepBackward(count = 1) {
+      assertNotDisposed()
       seekTo(frameIndex - count)
     },
     setPlaybackRate(next) {
-      if (next <= 0) throw new Error("playbackRate must be > 0")
+      if (!Number.isFinite(next) || next <= 0) {
+        throw new Error("playbackRate must be a finite number > 0")
+      }
       rate = next
       if (status === "playing") scheduleTick()
       notify()
     },
     appendFrame(frame: DiffusionFrame) {
+      assertNotDisposed()
+      if (workingTrace.final !== undefined) {
+        throw new Error("appendFrame: trace already closed by final")
+      }
+      const parsed = DiffusionFrameSchema.safeParse(frame)
+      if (!parsed.success) {
+        throw new Error(
+          `appendFrame: invalid frame: ${parsed.error.issues
+            .map((i) => `${i.path.join(".")}: ${i.message}`)
+            .join("; ")}`
+        )
+      }
       const last = workingTrace.frames[workingTrace.frames.length - 1]
       if (last && frame.ordinal <= last.ordinal) {
         throw new Error(
@@ -178,17 +220,59 @@ export function createPlayer(
       notify()
     },
     appendCheckpoint(checkpoint: TraceCheckpoint) {
+      assertNotDisposed()
+      if (workingTrace.final !== undefined) {
+        throw new Error("appendCheckpoint: trace already closed by final")
+      }
+      const parsed = TraceCheckpointSchema.safeParse(checkpoint)
+      if (!parsed.success) {
+        throw new Error(
+          `appendCheckpoint: invalid checkpoint: ${parsed.error.issues
+            .map((i) => `${i.path.join(".")}: ${i.message}`)
+            .join("; ")}`
+        )
+      }
+      const seen = new Set<string>()
+      for (const slot of checkpoint.slots) {
+        if (seen.has(slot.slotId)) {
+          throw new Error(`appendCheckpoint: duplicate slotId "${slot.slotId}"`)
+        }
+        seen.add(slot.slotId)
+      }
+      const checkpoints = workingTrace.checkpoints ?? []
+      const lastCheckpointOrdinal =
+        checkpoints[checkpoints.length - 1]?.frameOrdinal ??
+        workingTrace.initial.frameOrdinal
+      if (checkpoint.frameOrdinal <= lastCheckpointOrdinal) {
+        throw new Error(
+          `appendCheckpoint: frameOrdinal ${checkpoint.frameOrdinal} must ` +
+            `exceed ${lastCheckpointOrdinal}`
+        )
+      }
+      const lastFrameOrdinal =
+        workingTrace.frames[workingTrace.frames.length - 1]?.ordinal ?? -1
+      if (checkpoint.frameOrdinal > lastFrameOrdinal) {
+        throw new Error(
+          `appendCheckpoint: frameOrdinal ${checkpoint.frameOrdinal} exceeds ` +
+            `last frame ordinal ${lastFrameOrdinal}`
+        )
+      }
       workingTrace = {
         ...workingTrace,
-        checkpoints: [...(workingTrace.checkpoints ?? []), checkpoint],
+        checkpoints: [...checkpoints, checkpoint],
       }
       notify()
     },
     complete(result?: FinalResult) {
+      assertNotDisposed()
+      if (workingTrace.final !== undefined) {
+        throw new Error("complete: trace already closed by final")
+      }
       if (result) workingTrace = { ...workingTrace, final: result }
       notify()
     },
     dispose() {
+      disposed = true
       stopTimer()
       listeners.clear()
       status = "idle"
