@@ -12,6 +12,8 @@ const require = createRequire(import.meta.url)
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Sub-path deployments (GitHub Pages) set VITE_BASE_PATH=/dllm-viz/.
+  base: process.env.VITE_BASE_PATH ?? "/",
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: [
