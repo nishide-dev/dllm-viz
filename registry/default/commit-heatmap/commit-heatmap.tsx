@@ -52,15 +52,18 @@ export const STATE_GLYPHS: Record<TokenState, string> = {
   unknown: "▒",
 }
 
+// Neutral states use alpha grays so cells composite correctly over both
+// light and dark page backgrounds (registry rule: components must work in
+// both themes). Saturated state colors read fine on either.
 const STATE_COLORS: Record<number, string> = {
-  [TOKEN_STATE_CODES.prompt]: "#e4e4e7",
+  [TOKEN_STATE_CODES.prompt]: "rgba(113, 113, 122, 0.28)",
   [TOKEN_STATE_CODES.masked]: "#a1a1aa",
   [TOKEN_STATE_CODES.proposed]: "#f59e0b",
   [TOKEN_STATE_CODES.committed]: "#10b981",
   [TOKEN_STATE_CODES.fixed]: "#047857",
   [TOKEN_STATE_CODES.renoised]: "#ef4444",
-  [TOKEN_STATE_CODES.padding]: "#f4f4f5",
-  [TOKEN_STATE_CODES.unknown]: "#d4d4d8",
+  [TOKEN_STATE_CODES.padding]: "rgba(113, 113, 122, 0.12)",
+  [TOKEN_STATE_CODES.unknown]: "rgba(113, 113, 122, 0.45)",
 }
 
 /** Pure cell→color mapping shared by DOM and Canvas modes (unit-tested). */
@@ -72,7 +75,9 @@ export function heatmapCellColor(
   if (stateCode === MATRIX_ABSENT) return "transparent"
   if (metric === "confidence") {
     if (Number.isNaN(confidence)) {
-      return stateCode === TOKEN_STATE_CODES.masked ? "#a1a1aa" : "#e4e4e7"
+      return stateCode === TOKEN_STATE_CODES.masked
+        ? "#a1a1aa"
+        : "rgba(113, 113, 122, 0.28)"
     }
     const clamped = Math.min(Math.max(confidence, 0), 1)
     const alpha = Math.round((0.15 + 0.85 * clamped) * 255)
