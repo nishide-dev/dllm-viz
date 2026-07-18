@@ -52,11 +52,21 @@ export interface CommitMatrix {
   frameCount: number
   /**
    * Row-major slotRow * frameCount + (frameIndex - startFrame). Values
-   * are TOKEN_STATE_CODES or MATRIX_ABSENT.
+   * are TOKEN_STATE_CODES or MATRIX_ABSENT. Written once during the
+   * build; never mutated afterwards.
    */
   states: Uint8Array
-  /** Last known confidence per cell; NaN when unknown. Reset by mask. */
-  confidences: Float32Array
+  /**
+   * Last known confidence per cell; NaN when unknown. Reset by mask.
+   * Written once during the build; never mutated afterwards.
+   */
+  confidences: Float64Array
+}
+
+/** Addresses one matrix cell by row and absolute frame index. */
+export interface MatrixCellRef {
+  slotRow: number
+  frameIndex: number
 }
 
 export interface CommitMatrixCell {
@@ -94,10 +104,31 @@ function applyConfidenceOps(
 export function buildCommitMatrix(
   trace: DiffusionTrace,
   options: CommitMatrixOptions = {}
-): CommitMatrix {
+): Readonly<CommitMatrix> {
+  if (trace.frames.length === 0) {
+    // Live-stream startup: no frames yet is a normal state (spec §21.3),
+    // mirroring the player's empty-trace support.
+    if (options.startFrame !== undefined || options.endFrame !== undefined) {
+      throw new RangeError(
+        "buildCommitMatrix: cannot apply a frame window to a trace with no frames"
+      )
+    }
+    return {
+      slotIds: trace.initial.slots.map((slot) => slot.slotId),
+      startFrame: 0,
+      frameCount: 0,
+      states: new Uint8Array(0),
+      confidences: new Float64Array(0),
+    }
+  }
   const lastIndex = trace.frames.length - 1
   const startFrame = options.startFrame ?? 0
   const endFrame = options.endFrame ?? lastIndex
+  if (!(Number.isInteger(startFrame) && Number.isInteger(endFrame))) {
+    throw new RangeError(
+      `buildCommitMatrix: window [${startFrame}, ${endFrame}] must use integer frame indices`
+    )
+  }
   if (startFrame < 0 || endFrame > lastIndex || startFrame > endFrame) {
     throw new RangeError(
       `buildCommitMatrix: window [${startFrame}, ${endFrame}] out of range [0, ${lastIndex}]`
@@ -125,7 +156,7 @@ export function buildCommitMatrix(
 
   const frameCount = endFrame - startFrame + 1
   const states = new Uint8Array(slotIds.length * frameCount).fill(MATRIX_ABSENT)
-  const confidences = new Float32Array(slotIds.length * frameCount).fill(
+  const confidences = new Float64Array(slotIds.length * frameCount).fill(
     Number.NaN
   )
   const lastConfidence = new Map<string, number>()
@@ -158,9 +189,9 @@ export function buildCommitMatrix(
 
 export function getMatrixCell(
   matrix: CommitMatrix,
-  slotRow: number,
-  frameIndex: number
+  cell: MatrixCellRef
 ): CommitMatrixCell {
+  const { slotRow, frameIndex } = cell
   const column = frameIndex - matrix.startFrame
   if (slotRow < 0 || slotRow >= matrix.slotIds.length) {
     throw new RangeError(`getMatrixCell: row ${slotRow} out of range`)
@@ -168,18 +199,15 @@ export function getMatrixCell(
   if (column < 0 || column >= matrix.frameCount) {
     throw new RangeError(`getMatrixCell: frame ${frameIndex} out of range`)
   }
-  const cell = slotRow * matrix.frameCount + column
-  const code = matrix.states[cell]
-  const confidence = matrix.confidences[cell]
+  const flat = slotRow * matrix.frameCount + column
+  const code = matrix.states[flat]
+  // Float64 storage represents source confidences exactly; pass through.
+  const confidence = matrix.confidences[flat]
   return {
     slotId: matrix.slotIds[slotRow],
     frameIndex,
     state: code === MATRIX_ABSENT ? undefined : tokenStateFromCode(code),
-    // Float32Array cannot represent e.g. 0.46 exactly; round back to the
-    // 4-decimal source precision so cells compare equal to trace values.
-    confidence: Number.isNaN(confidence)
-      ? undefined
-      : Number(confidence.toFixed(4)),
+    confidence: Number.isNaN(confidence) ? undefined : confidence,
   }
 }
 
