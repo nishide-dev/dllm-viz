@@ -1,7 +1,11 @@
 import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
-import { arBaselineTrace, maskedRemaskTrace } from "@/lib/dllm-viz-core"
+import {
+  arBaselineTrace,
+  confidenceCommitTrace,
+  maskedRemaskTrace,
+} from "@/lib/dllm-viz-core"
 import {
   DiffusionComparison,
   paneFrameIndex,
@@ -35,9 +39,26 @@ describe("DiffusionComparison", () => {
     expect(screen.getByText(/synced by frame ordinal/i)).toBeInTheDocument()
   })
 
-  it("warns that differing frame counts are not equivalent steps", () => {
+  it("warns that frame-ordinal sync does not imply equivalent steps", () => {
     setup()
-    expect(screen.getByText(/not equivalent steps/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/equal ordinals are not equivalent steps/i)
+    ).toBeInTheDocument()
+  })
+
+  it("warns in frame-ordinal mode when frame counts match but algorithms differ", () => {
+    render(
+      <DiffusionComparison
+        panes={[
+          { trace: confidenceCommitTrace, label: "Confidence commit" },
+          { trace: arBaselineTrace, label: "Autoregressive baseline" },
+        ]}
+      />
+    )
+    expect(screen.getAllByText(/frame 1\/5/)).toHaveLength(2)
+    expect(
+      screen.getByText(/equal ordinals are not equivalent steps/i)
+    ).toBeInTheDocument()
   })
 
   it("advances both panes from the shared controls (frame-ordinal)", async () => {

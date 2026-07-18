@@ -100,8 +100,6 @@ export function DiffusionComparison({
     panes[1].trace.frames.length
   )
   const clampedMaster = Math.min(masterIndex, masterCount - 1)
-  const frameCountsDiffer =
-    panes[0].trace.frames.length !== panes[1].trace.frames.length
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
@@ -150,8 +148,7 @@ export function DiffusionComparison({
       <p className="font-mono text-muted-foreground text-xs">
         Synced by {SYNC_RULE_LABELS[syncRule]}.
         {syncRule === "frame-ordinal" &&
-          frameCountsDiffer &&
-          " Frame counts differ — equal ordinals are NOT equivalent steps."}
+          " Equal ordinals are NOT equivalent steps."}
         {syncRule === "completion-ratio" &&
           " Positions are proportional — frames are not step-equivalent."}
       </p>
