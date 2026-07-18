@@ -3050,17 +3050,19 @@ git commit -m "feat(registry): DiffusionStepControls"
 - Create: `registry/default/trace-inspector/trace-inspector.tsx`, `apps/web/src/components/trace-inspector.test.tsx`
 
 **Interfaces:**
-- Consumes: `useDiffusionPlayer`, `useDiffusionSnapshot`, `useTraceProvenance`; types `TraceOperation`, `DiffusionFrame`, `SetDistributionOperation`.
-- Produces: `TraceInspector(props: { selectedSlotId?: string | null; className?: string })` — shows slot ID/index, token ID, decoded token, state, confidence, top-k candidates (with omitted mass), operation history up to the current frame, and provenance labels for every displayed field (spec §15.3).
+- Consumes: `useDiffusionPlayer`, `useDiffusionSnapshot`, `useTraceProvenance`; types `TraceOperation`, `DiffusionFrame`, `SetDistributionOperation`, `TraceProvenance`.
+- Produces: `TraceInspector(props: { selectedSlotId?: string | null; className?: string })` — shows slot ID/index, token ID, decoded token, state, confidence, top-k candidates (with omitted mass), operation history up to the current frame, and a `data-slot="provenance-badge"` next to **every** displayed metric — main `<dl>` fields, each candidate row, the omitted-mass row, and each operation-history row (spec §15.3: "provenance for each field", "MUST visibly mark derived and illustrative values"). Distribution/confidence are recomputed from ops strictly after the most recent `mask`/`renoise` for the slot, so a remask boundary never leaves a stale pre-remask decision displayed alongside the current frame (spec §15.1).
+
+> **Post-review fix (2026-07-18):** the first-pass implementation below only badged the main `<dl>` fields and did not reset distribution/confidence across a remask boundary. Both gaps were Important review findings and are fixed in the verbatim code that follows — do not reintroduce the unbadged/stale-distribution version.
 
 - [ ] **Step 1: Write the failing test** (`apps/web/src/components/trace-inspector.test.tsx`)
 
 ```tsx
+import { render, screen } from "@testing-library/react"
+import { describe, expect, it } from "vitest"
 import { maskedRemaskTrace } from "@/lib/dllm-viz-core"
 import { DiffusionTraceProvider } from "@/lib/dllm-viz-react"
 import { TraceInspector } from "@/registry/default/trace-inspector/trace-inspector"
-import { render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
 
 const renderAt = (frame: number, selectedSlotId?: string | null) =>
   render(
@@ -3113,6 +3115,47 @@ describe("TraceInspector", () => {
     renderAt(5, "s3")
     expect(screen.getAllByText("illustrative").length).toBeGreaterThan(0)
   })
+
+  it("marks candidate rows and the omitted-mass row with provenance (spec §15.3)", () => {
+    renderAt(2, "s3")
+    const candidatesHeading = screen.getByText("Candidates")
+    const candidatesList = candidatesHeading.nextElementSibling as HTMLElement
+    const rows = [...candidatesList.querySelectorAll("li")]
+    // every row (3 candidates + 1 omitted-mass row) carries its own badge.
+    expect(rows).toHaveLength(4)
+    for (const row of rows) {
+      expect(
+        row.querySelector('[data-slot="provenance-badge"]')
+      ).toBeInTheDocument()
+    }
+  })
+
+  it("marks each operation-history row with provenance (spec §15.3)", () => {
+    renderAt(5, "s3")
+    const history = screen.getByRole("list", { name: /operation history/i })
+    const rows = [...history.querySelectorAll("li")]
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      expect(
+        row.querySelector('[data-slot="provenance-badge"]')
+      ).toBeInTheDocument()
+    }
+  })
+
+  it("does not show a stale pre-remask distribution/confidence after remask+recommit", () => {
+    // s3 in maskedRemaskTrace: committed "green" (f2) -> renoise (f3) ->
+    // mask (f4) -> recommitted "blue" (f5). At frame 5 the only data
+    // "current" for the distribution/confidence fields must come from ops
+    // after the mask boundary, i.e. the "blue" commit — never the
+    // pre-remask "green" decision (46% / candidates / omitted mass).
+    renderAt(5, "s3")
+    expect(screen.getByText("232")).toBeInTheDocument()
+    expect(screen.queryByText("Candidates")).not.toBeInTheDocument()
+    expect(screen.queryByText(/46%/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/omitted mass/i)).not.toBeInTheDocument()
+    // post-remask confidence (0.88) from the "blue" recommit is shown.
+    expect(screen.getByText("0.88")).toBeInTheDocument()
+  })
 })
 ```
 
@@ -3128,6 +3171,7 @@ import type {
   DiffusionFrame,
   SetDistributionOperation,
   TraceOperation,
+  TraceProvenance,
 } from "@/lib/dllm-viz-core"
 import {
   useDiffusionPlayer,
@@ -3179,6 +3223,63 @@ function opSummary(op: TraceOperation): string {
   }
 }
 
+function latestDistribution(
+  history: HistoryEntry[]
+): SetDistributionOperation | undefined {
+  for (let index = history.length - 1; index >= 0; index--) {
+    const operation = history[index].op
+    if (operation.type === "set-distribution") {
+      return operation
+    }
+  }
+}
+
+function latestConfidence(history: HistoryEntry[]): number | undefined {
+  for (let index = history.length - 1; index >= 0; index--) {
+    const operation = history[index].op
+    if ("confidence" in operation && operation.confidence !== undefined) {
+      return operation.confidence
+    }
+  }
+}
+
+/**
+ * The trace protocol treats remasking as a normal operation, so a slot's
+ * distribution/confidence must be re-derived after every `mask`/`renoise`.
+ * Slice off everything up to and including the most recent remask boundary
+ * so stale pre-remask data never appears alongside the current frame.
+ */
+function afterLatestRemaskBoundary(history: HistoryEntry[]): HistoryEntry[] {
+  for (let index = history.length - 1; index >= 0; index--) {
+    const type = history[index].op.type
+    if (type === "mask" || type === "renoise") {
+      return history.slice(index + 1)
+    }
+  }
+  return history
+}
+
+function provenanceFor(provenance: TraceProvenance, key: string): string {
+  return provenance.fields?.[key] ?? provenance.mode
+}
+
+function ProvenanceBadge({
+  provenance,
+  fieldKey,
+}: {
+  provenance: TraceProvenance
+  fieldKey: string
+}) {
+  return (
+    <span
+      data-slot="provenance-badge"
+      className="rounded border border-dashed px-1 text-[10px] text-muted-foreground"
+    >
+      {provenanceFor(provenance, fieldKey)}
+    </span>
+  )
+}
+
 export function TraceInspector({
   selectedSlotId = null,
   className,
@@ -3201,28 +3302,19 @@ export function TraceInspector({
     snapshot.frameIndex,
     slot.slotId
   )
-  const distribution = [...history]
-    .reverse()
-    .find((entry) => entry.op.type === "set-distribution")?.op as
-    | SetDistributionOperation
-    | undefined
-  const lastConfidence = [...history]
-    .reverse()
-    .flatMap((entry) =>
-      "confidence" in entry.op && entry.op.confidence !== undefined
-        ? [entry.op.confidence]
-        : []
-    )[0]
-  const provenanceLabel = provenance.mode
+  // Only ops after the latest mask/renoise are "current"; anything from
+  // before that boundary is a superseded decision and must not be shown
+  // as if it still described the present frame (spec §15.1 remasking).
+  const currentHistory = afterLatestRemaskBoundary(history)
+  const distribution = latestDistribution(currentHistory)
+  const lastConfidence = latestConfidence(currentHistory)
 
   const field = (label: string, value: string | number | undefined) =>
     value === undefined ? null : (
       <div className="flex items-baseline gap-2">
         <dt className="w-24 shrink-0 text-muted-foreground">{label}</dt>
         <dd className="font-mono">{value}</dd>
-        <span className="rounded border border-dashed px-1 text-[10px] text-muted-foreground">
-          {provenance.fields?.[label] ?? provenanceLabel}
-        </span>
+        <ProvenanceBadge provenance={provenance} fieldKey={label} />
       </div>
     )
 
@@ -3241,15 +3333,27 @@ export function TraceInspector({
           <h3 className="mb-1 font-medium">Candidates</h3>
           <ul className="flex flex-col gap-0.5 font-mono text-xs">
             {distribution.candidates.map((candidate) => (
-              <li key={candidate.rank}>
-                #{candidate.rank} {candidate.text ?? candidate.tokenId}
-                {candidate.probability !== undefined &&
-                  ` — ${Math.round(candidate.probability * 100)}%`}
+              <li key={candidate.rank} className="flex items-baseline gap-2">
+                <span>
+                  #{candidate.rank} {candidate.text ?? candidate.tokenId}
+                  {candidate.probability !== undefined &&
+                    ` — ${Math.round(candidate.probability * 100)}%`}
+                </span>
+                <ProvenanceBadge
+                  provenance={provenance}
+                  fieldKey="candidates"
+                />
               </li>
             ))}
             {distribution.omittedMass !== undefined && (
-              <li className="text-muted-foreground">
-                omitted mass — {Math.round(distribution.omittedMass * 100)}%
+              <li className="flex items-baseline gap-2 text-muted-foreground">
+                <span>
+                  omitted mass — {Math.round(distribution.omittedMass * 100)}%
+                </span>
+                <ProvenanceBadge
+                  provenance={provenance}
+                  fieldKey="omitted mass"
+                />
               </li>
             )}
           </ul>
@@ -3262,8 +3366,14 @@ export function TraceInspector({
           className="flex flex-col gap-0.5 font-mono text-xs"
         >
           {history.map((entry, i) => (
-            <li key={`${entry.frame.frameId}-${i}`}>
-              #{entry.frame.ordinal} {opSummary(entry.op)}
+            <li
+              key={`${entry.frame.frameId}-${i}`}
+              className="flex items-baseline gap-2"
+            >
+              <span>
+                #{entry.frame.ordinal} {opSummary(entry.op)}
+              </span>
+              <ProvenanceBadge provenance={provenance} fieldKey="operation" />
             </li>
           ))}
         </ul>
@@ -3276,7 +3386,7 @@ export function TraceInspector({
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm --filter web exec vitest run src/components/trace-inspector.test.tsx`
-Expected: PASS (6 tests).
+Expected: PASS (9 tests).
 
 - [ ] **Step 5: Verify workspace, commit**
 

@@ -2,6 +2,7 @@ import type {
   DiffusionFrame,
   SetDistributionOperation,
   TraceOperation,
+  TraceProvenance,
 } from "@/lib/dllm-viz-core"
 import {
   useDiffusionPlayer,
@@ -73,6 +74,43 @@ function latestConfidence(history: HistoryEntry[]): number | undefined {
   }
 }
 
+/**
+ * The trace protocol treats remasking as a normal operation, so a slot's
+ * distribution/confidence must be re-derived after every `mask`/`renoise`.
+ * Slice off everything up to and including the most recent remask boundary
+ * so stale pre-remask data never appears alongside the current frame.
+ */
+function afterLatestRemaskBoundary(history: HistoryEntry[]): HistoryEntry[] {
+  for (let index = history.length - 1; index >= 0; index--) {
+    const type = history[index].op.type
+    if (type === "mask" || type === "renoise") {
+      return history.slice(index + 1)
+    }
+  }
+  return history
+}
+
+function provenanceFor(provenance: TraceProvenance, key: string): string {
+  return provenance.fields?.[key] ?? provenance.mode
+}
+
+function ProvenanceBadge({
+  provenance,
+  fieldKey,
+}: {
+  provenance: TraceProvenance
+  fieldKey: string
+}) {
+  return (
+    <span
+      data-slot="provenance-badge"
+      className="rounded border border-dashed px-1 text-[10px] text-muted-foreground"
+    >
+      {provenanceFor(provenance, fieldKey)}
+    </span>
+  )
+}
+
 export function TraceInspector({
   selectedSlotId = null,
   className,
@@ -95,18 +133,19 @@ export function TraceInspector({
     snapshot.frameIndex,
     slot.slotId
   )
-  const distribution = latestDistribution(history)
-  const lastConfidence = latestConfidence(history)
-  const provenanceLabel = provenance.mode
+  // Only ops after the latest mask/renoise are "current"; anything from
+  // before that boundary is a superseded decision and must not be shown
+  // as if it still described the present frame (spec §15.1 remasking).
+  const currentHistory = afterLatestRemaskBoundary(history)
+  const distribution = latestDistribution(currentHistory)
+  const lastConfidence = latestConfidence(currentHistory)
 
   const field = (label: string, value: string | number | undefined) =>
     value === undefined ? null : (
       <div className="flex items-baseline gap-2">
         <dt className="w-24 shrink-0 text-muted-foreground">{label}</dt>
         <dd className="font-mono">{value}</dd>
-        <span className="rounded border border-dashed px-1 text-[10px] text-muted-foreground">
-          {provenance.fields?.[label] ?? provenanceLabel}
-        </span>
+        <ProvenanceBadge provenance={provenance} fieldKey={label} />
       </div>
     )
 
@@ -125,15 +164,27 @@ export function TraceInspector({
           <h3 className="mb-1 font-medium">Candidates</h3>
           <ul className="flex flex-col gap-0.5 font-mono text-xs">
             {distribution.candidates.map((candidate) => (
-              <li key={candidate.rank}>
-                #{candidate.rank} {candidate.text ?? candidate.tokenId}
-                {candidate.probability !== undefined &&
-                  ` — ${Math.round(candidate.probability * 100)}%`}
+              <li key={candidate.rank} className="flex items-baseline gap-2">
+                <span>
+                  #{candidate.rank} {candidate.text ?? candidate.tokenId}
+                  {candidate.probability !== undefined &&
+                    ` — ${Math.round(candidate.probability * 100)}%`}
+                </span>
+                <ProvenanceBadge
+                  provenance={provenance}
+                  fieldKey="candidates"
+                />
               </li>
             ))}
             {distribution.omittedMass !== undefined && (
-              <li className="text-muted-foreground">
-                omitted mass — {Math.round(distribution.omittedMass * 100)}%
+              <li className="flex items-baseline gap-2 text-muted-foreground">
+                <span>
+                  omitted mass — {Math.round(distribution.omittedMass * 100)}%
+                </span>
+                <ProvenanceBadge
+                  provenance={provenance}
+                  fieldKey="omitted mass"
+                />
               </li>
             )}
           </ul>
@@ -146,8 +197,14 @@ export function TraceInspector({
           className="flex flex-col gap-0.5 font-mono text-xs"
         >
           {history.map((entry, i) => (
-            <li key={`${entry.frame.frameId}-${i}`}>
-              #{entry.frame.ordinal} {opSummary(entry.op)}
+            <li
+              key={`${entry.frame.frameId}-${i}`}
+              className="flex items-baseline gap-2"
+            >
+              <span>
+                #{entry.frame.ordinal} {opSummary(entry.op)}
+              </span>
+              <ProvenanceBadge provenance={provenance} fieldKey="operation" />
             </li>
           ))}
         </ul>

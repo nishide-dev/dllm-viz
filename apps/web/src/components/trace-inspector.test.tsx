@@ -55,4 +55,45 @@ describe("TraceInspector", () => {
     renderAt(5, "s3")
     expect(screen.getAllByText("illustrative").length).toBeGreaterThan(0)
   })
+
+  it("marks candidate rows and the omitted-mass row with provenance (spec §15.3)", () => {
+    renderAt(2, "s3")
+    const candidatesHeading = screen.getByText("Candidates")
+    const candidatesList = candidatesHeading.nextElementSibling as HTMLElement
+    const rows = [...candidatesList.querySelectorAll("li")]
+    // every row (3 candidates + 1 omitted-mass row) carries its own badge.
+    expect(rows).toHaveLength(4)
+    for (const row of rows) {
+      expect(
+        row.querySelector('[data-slot="provenance-badge"]')
+      ).toBeInTheDocument()
+    }
+  })
+
+  it("marks each operation-history row with provenance (spec §15.3)", () => {
+    renderAt(5, "s3")
+    const history = screen.getByRole("list", { name: /operation history/i })
+    const rows = [...history.querySelectorAll("li")]
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      expect(
+        row.querySelector('[data-slot="provenance-badge"]')
+      ).toBeInTheDocument()
+    }
+  })
+
+  it("does not show a stale pre-remask distribution/confidence after remask+recommit", () => {
+    // s3 in maskedRemaskTrace: committed "green" (f2) -> renoise (f3) ->
+    // mask (f4) -> recommitted "blue" (f5). At frame 5 the only data "current"
+    // for the distribution/confidence fields must come from ops after the
+    // mask boundary, i.e. the "blue" commit — never the pre-remask "green"
+    // decision (46% / candidates / omitted mass).
+    renderAt(5, "s3")
+    expect(screen.getByText("232")).toBeInTheDocument()
+    expect(screen.queryByText("Candidates")).not.toBeInTheDocument()
+    expect(screen.queryByText(/46%/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/omitted mass/i)).not.toBeInTheDocument()
+    // post-remask confidence (0.88) from the "blue" recommit is shown.
+    expect(screen.getByText("0.88")).toBeInTheDocument()
+  })
 })
