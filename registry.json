@@ -58,6 +58,11 @@
           "path": "registry/default/lib/dllm-viz-core/testing/fixtures.ts",
           "type": "registry:lib",
           "target": "lib/dllm-viz-core/testing/fixtures.ts"
+        },
+        {
+          "path": "registry/default/lib/dllm-viz-core/testing/generate.ts",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-core/testing/generate.ts"
         }
       ],
       "dependencies": ["zod"]
