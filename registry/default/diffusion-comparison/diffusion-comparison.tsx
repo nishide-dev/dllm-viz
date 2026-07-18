@@ -99,7 +99,8 @@ export function DiffusionComparison({
     panes[0].trace.frames.length,
     panes[1].trace.frames.length
   )
-  const clampedMaster = Math.min(masterIndex, masterCount - 1)
+  // masterCount can be 0 while both panes stream up (spec §21.3).
+  const clampedMaster = Math.max(Math.min(masterIndex, masterCount - 1), 0)
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
@@ -125,7 +126,7 @@ export function DiffusionComparison({
         <input
           aria-label="Comparison position"
           className="min-w-24 flex-1 accent-[var(--dllm-committed,#10b981)]"
-          max={masterCount - 1}
+          max={Math.max(masterCount - 1, 0)}
           min={0}
           onChange={(event) => setMasterIndex(Number(event.target.value))}
           type="range"

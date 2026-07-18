@@ -1,11 +1,21 @@
 import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
-import { blockCanvasTrace, materializeSlots } from "@/lib/dllm-viz-core"
-import { DiffusionTraceProvider } from "@/lib/dllm-viz-react"
+import {
+  blockCanvasTrace,
+  confidenceCommitTrace,
+  materializeSlots,
+} from "@/lib/dllm-viz-core"
+import {
+  DiffusionSelectionProvider,
+  DiffusionTraceProvider,
+  useSlotSelection,
+} from "@/lib/dllm-viz-react"
 import {
   BlockDiffusionCanvas,
   computeCanvasSections,
 } from "@/registry/default/block-diffusion-canvas/block-diffusion-canvas"
+import { oneFrameTrace, zeroFrameTrace } from "@/test/streaming-traces"
 
 const renderAt = (frame: number) =>
   render(
@@ -91,6 +101,63 @@ describe("BlockDiffusionCanvas", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       /Canvas 1 active, inner step 1 of 2/
     )
+  })
+
+  it("labels traces without block/canvas structure instead of faking one", () => {
+    // confidenceCommitTrace has neither generation.canvasLength nor any
+    // frame with canvasIndex — no canvas sections may be synthesized.
+    render(
+      <DiffusionTraceProvider initialFrame={1} trace={confidenceCommitTrace}>
+        <BlockDiffusionCanvas />
+      </DiffusionTraceProvider>
+    )
+    expect(screen.getByText(/no block\/canvas structure/i)).toBeInTheDocument()
+    expect(
+      screen.queryByRole("region", { name: /future/i })
+    ).not.toBeInTheDocument()
+    // Prompt and completion tokens still render plainly.
+    expect(
+      screen.getByRole("region", { name: "Prompt context" })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /Slot 3: ., committed/ })
+    ).toBeInTheDocument()
+  })
+
+  it("renders zero-frame and one-frame traces without crashing (spec §21.3)", () => {
+    const { unmount } = render(
+      <DiffusionTraceProvider trace={zeroFrameTrace}>
+        <BlockDiffusionCanvas />
+      </DiffusionTraceProvider>
+    )
+    expect(screen.getByText(/no block\/canvas structure/i)).toBeInTheDocument()
+    unmount()
+    render(
+      <DiffusionTraceProvider trace={oneFrameTrace}>
+        <BlockDiffusionCanvas />
+      </DiffusionTraceProvider>
+    )
+    expect(screen.getByText(/no block\/canvas structure/i)).toBeInTheDocument()
+  })
+
+  it("clicking a slot chip selects it in the shared selection context", async () => {
+    function Probe() {
+      const { selectedSlotId } = useSlotSelection()
+      return <output data-testid="probe">{selectedSlotId ?? "none"}</output>
+    }
+    render(
+      <DiffusionSelectionProvider>
+        <DiffusionTraceProvider initialFrame={2} trace={blockCanvasTrace}>
+          <BlockDiffusionCanvas />
+          <Probe />
+        </DiffusionTraceProvider>
+      </DiffusionSelectionProvider>
+    )
+    const chip = screen.getByRole("button", { name: /Slot 2: red, committed/ })
+    expect(chip).toHaveAttribute("aria-pressed", "false")
+    await userEvent.click(chip)
+    expect(chip).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByTestId("probe")).toHaveTextContent("s2")
   })
 
   it("computeCanvasSections derives status and progress", () => {

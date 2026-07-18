@@ -1,12 +1,19 @@
 import { render, screen, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
-import type { DiffusionTrace } from "@/lib/dllm-viz-core"
+import type {
+  DiffusionTrace,
+  SetDistributionOperation,
+} from "@/lib/dllm-viz-core"
 import { confidenceCommitTrace, maskedRemaskTrace } from "@/lib/dllm-viz-core"
 import {
   DiffusionSelectionProvider,
   DiffusionTraceProvider,
 } from "@/lib/dllm-viz-react"
-import { CandidateDistribution } from "@/registry/default/candidate-distribution/candidate-distribution"
+import {
+  CandidateDistribution,
+  churnMarker,
+} from "@/registry/default/candidate-distribution/candidate-distribution"
+import { oneFrameTrace, zeroFrameTrace } from "@/test/streaming-traces"
 
 const renderAt = (
   trace: DiffusionTrace,
@@ -70,7 +77,62 @@ describe("CandidateDistribution", () => {
     expect(within(row as HTMLElement).getByText("derived")).toBeInTheDocument()
   })
 
-  it("does not show a superseded pre-remask distribution (spec §15.1)", () => {
+  it("shows omitted mass as unknown when it cannot be derived", () => {
+    const stripped: DiffusionTrace = structuredClone(confidenceCommitTrace)
+    for (const frame of stripped.frames) {
+      for (const op of frame.operations) {
+        if (op.type === "set-distribution") {
+          op.omittedMass = undefined
+          op.candidates[0].probability = undefined
+        }
+      }
+    }
+    renderAt(stripped, 1, "s2")
+    expect(screen.getByText(/omitted mass — unknown/)).toBeInTheDocument()
+  })
+
+  it("warns when the distribution does not sum to 1", () => {
+    const inflated: DiffusionTrace = structuredClone(confidenceCommitTrace)
+    const op = inflated.frames[1].operations[0]
+    if (op.type !== "set-distribution") throw new Error("fixture changed")
+    op.omittedMass = undefined
+    op.candidates[0].probability = 0.8
+    op.candidates[1].probability = 0.4
+    op.candidates[2].probability = 0.2 // Σp = 1.4
+    renderAt(inflated, 1, "s2")
+    expect(
+      screen.getByText(/distribution does not sum to 1/i)
+    ).toBeInTheDocument()
+  })
+
+  it("does not warn when the distribution is consistent", () => {
+    renderAt(confidenceCommitTrace, 1, "s2")
+    expect(
+      screen.queryByText(/distribution does not sum to 1/i)
+    ).not.toBeInTheDocument()
+  })
+
+  it("renders zero-frame and one-frame traces without crashing (spec §21.3)", () => {
+    const { unmount } = renderAt(zeroFrameTrace, 0, "s2")
+    expect(screen.getByText(/no current distribution/i)).toBeInTheDocument()
+    unmount()
+    renderAt(oneFrameTrace, 0, "s2")
+    expect(screen.getByText(/no current distribution/i)).toBeInTheDocument()
+  })
+
+  it("churnMarker never matches candidates lacking both tokenId and text", () => {
+    const previous: SetDistributionOperation = {
+      type: "set-distribution",
+      slotId: "s2",
+      candidates: [{ rank: 0 }],
+    }
+    // Neither side is identifiable — no marker rather than a bogus match.
+    expect(churnMarker({ rank: 1 }, previous)).toBeNull()
+  })
+
+  // Rationale, not a spec mandate: remasking invalidates earlier per-slot
+  // decisions — cf. §15.1 remask replay acceptance.
+  it("does not show a superseded pre-remask distribution", () => {
     renderAt(maskedRemaskTrace, 5, "s3")
     expect(screen.getByText(/no current distribution/i)).toBeInTheDocument()
   })

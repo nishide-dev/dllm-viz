@@ -10,6 +10,7 @@ import {
   DiffusionComparison,
   paneFrameIndex,
 } from "@/registry/default/diffusion-comparison/diffusion-comparison"
+import { oneFrameTrace, zeroFrameTrace } from "@/test/streaming-traces"
 
 const panes: Parameters<typeof DiffusionComparison>[0]["panes"] = [
   { trace: maskedRemaskTrace, label: "Diffusion (remasking)" },
@@ -99,6 +100,29 @@ describe("DiffusionComparison", () => {
     })
     expect(screen.getAllByTestId("custom")).toHaveLength(2)
     expect(screen.getByText("fixture-masked-remask")).toBeInTheDocument()
+  })
+
+  it("renders zero-frame and one-frame panes without crashing (spec §21.3)", () => {
+    const { unmount } = render(
+      <DiffusionComparison
+        panes={[
+          { trace: zeroFrameTrace, label: "Zero frames" },
+          { trace: oneFrameTrace, label: "One frame" },
+        ]}
+      />
+    )
+    expect(screen.getByText("Zero frames")).toBeInTheDocument()
+    expect(screen.getByText("One frame")).toBeInTheDocument()
+    unmount()
+    render(
+      <DiffusionComparison
+        panes={[
+          { trace: zeroFrameTrace, label: "Zero A" },
+          { trace: zeroFrameTrace, label: "Zero B" },
+        ]}
+      />
+    )
+    expect(screen.getByText("Zero A")).toBeInTheDocument()
   })
 
   it("paneFrameIndex maps ordinal and ratio rules", () => {

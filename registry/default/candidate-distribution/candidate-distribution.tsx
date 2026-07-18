@@ -13,6 +13,12 @@ import {
 import { cn } from "@/lib/utils"
 
 export interface CandidateDistributionProps {
+  /**
+   * Which slot to show. Tri-state: `undefined` (omit the prop) falls
+   * back to the surrounding DiffusionSelectionProvider's selection;
+   * `null` forces the empty "select a slot" state regardless of
+   * context; a string always shows that slot, overriding the context.
+   */
   slotId?: string | null
   className?: string
 }
@@ -24,10 +30,11 @@ export interface SlotDistributions {
 
 /**
  * Latest distribution for a slot up to the frame. Remasking is a normal
- * operation: a distribution published before the most recent
- * mask/renoise on the slot is a superseded decision, so `current` is
- * undefined then (spec §15.1). `previous` is the distribution
- * immediately before `current`, used for churn markers.
+ * operation, and it invalidates earlier per-slot decisions (cf. §15.1
+ * remask replay acceptance): a distribution published before the most
+ * recent mask/renoise on the slot is a superseded decision, so
+ * `current` is undefined then. `previous` is the distribution before
+ * the latest distribution, used for churn markers.
  */
 export function distributionsForSlot(
   frames: DiffusionFrame[],
@@ -76,15 +83,20 @@ export function omittedMassInfo(
   return { value: Math.max(0, 1 - sum), derived: true }
 }
 
-function churnMarker(
+export function churnMarker(
   candidate: SetDistributionOperation["candidates"][number],
   previous: SetDistributionOperation | undefined
 ): string | null {
   if (!previous) return null
+  // A candidate is only comparable when it is identifiable: without a
+  // tokenId or text, undefined === undefined must not count as a match.
+  if (candidate.tokenId === undefined && candidate.text === undefined) {
+    return null
+  }
   const match = previous.candidates.find((c) =>
     candidate.tokenId !== undefined
       ? c.tokenId === candidate.tokenId
-      : c.text === candidate.text
+      : c.text !== undefined && c.text === candidate.text
   )
   if (!match) return "new"
   if (match.rank > candidate.rank) return `↑${match.rank - candidate.rank}`
@@ -143,6 +155,15 @@ export function CandidateDistribution({
 
   const omitted = omittedMassInfo(current)
   const percent = (p: number) => `${Math.round(p * 100)}%`
+  // Consistency check: only meaningful when every probability is known.
+  const probabilitySum = current.candidates.every(
+    (c) => c.probability !== undefined
+  )
+    ? current.candidates.reduce((acc, c) => acc + (c.probability ?? 0), 0) +
+      (current.omittedMass ?? omitted?.value ?? 0)
+    : undefined
+  const inconsistent =
+    probabilitySum !== undefined && Math.abs(probabilitySum - 1) > 0.05
 
   return (
     <div className={cn("flex flex-col gap-2 text-sm", className)}>
@@ -207,7 +228,7 @@ export function CandidateDistribution({
           )
         })}
       </ol>
-      {omitted !== undefined && (
+      {omitted !== undefined ? (
         <p className="flex items-center gap-2 font-mono text-muted-foreground text-xs">
           <span>omitted mass — {percent(omitted.value)}</span>
           <Badge
@@ -217,6 +238,17 @@ export function CandidateDistribution({
                 : provenanceFor(provenance, "omitted mass")
             }
           />
+        </p>
+      ) : (
+        // Spec §15.6: omitted mass must be shown — when it is neither
+        // recorded nor derivable, say so instead of hiding the line.
+        <p className="font-mono text-muted-foreground text-xs">
+          omitted mass — unknown
+        </p>
+      )}
+      {inconsistent && (
+        <p className="font-mono text-muted-foreground text-xs">
+          distribution does not sum to 1 (Σ = {probabilitySum?.toFixed(2)})
         </p>
       )}
     </div>

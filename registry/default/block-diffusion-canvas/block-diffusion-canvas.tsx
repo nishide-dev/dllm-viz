@@ -24,22 +24,43 @@ export interface CanvasSection {
 }
 
 /**
- * Derives canvas membership and progress (spec §15.5, §13). The trace
- * schema has no per-slot canvas field, so completion slots are chunked
- * by generation.canvasLength (derived data). Status comes from
+ * Derives canvas membership and progress (spec §15.5). The trace schema
+ * has no per-slot canvas field, so completion slots are chunked by
+ * generation.canvasLength (derived data). Status comes from
  * canvas-start/canvas-commit frames up to the current frame; the inner
  * step total is the maximum innerStep observed for that canvas across
- * the whole trace (fallback generation.totalSteps).
+ * the whole trace (undefined when the trace never records innerStep —
+ * never faked from unrelated totals).
+ *
+ * When the trace declares no canvasLength AND no frame carries a
+ * canvasIndex, it has no block/canvas structure: `hasCanvasStructure`
+ * is false and no sections are synthesized (no-faking invariant).
  */
 export function computeCanvasSections(
   trace: DiffusionTrace,
   slots: readonly TokenSlot[],
   frameIndex: number
-): { promptSlots: TokenSlot[]; sections: CanvasSection[] } {
+): {
+  promptSlots: TokenSlot[]
+  completionSlots: TokenSlot[]
+  sections: CanvasSection[]
+  hasCanvasStructure: boolean
+} {
   const promptSlots = slots.filter(
     (slot) => slot.region === "prompt" || slot.state === "prompt"
   )
   const completion = slots.filter((slot) => !promptSlots.includes(slot))
+  const hasCanvasStructure =
+    trace.generation.canvasLength !== undefined ||
+    trace.frames.some((frame) => frame.canvasIndex !== undefined)
+  if (!hasCanvasStructure) {
+    return {
+      promptSlots,
+      completionSlots: completion,
+      sections: [],
+      hasCanvasStructure,
+    }
+  }
   const canvasLength = trace.generation.canvasLength ?? completion.length
   const chunkCount =
     canvasLength > 0 ? Math.ceil(completion.length / canvasLength) : 0
@@ -91,10 +112,15 @@ export function computeCanvasSections(
           ? "active"
           : "future",
       innerStep: c === active ? innerStep : undefined,
-      innerStepCount: innerStepCounts.get(c) ?? trace.generation.totalSteps,
+      innerStepCount: innerStepCounts.get(c),
     })
   }
-  return { promptSlots, sections }
+  return {
+    promptSlots,
+    completionSlots: completion,
+    sections,
+    hasCanvasStructure,
+  }
 }
 
 // Registry items are self-contained: these chip styles deliberately
@@ -153,11 +179,8 @@ export function BlockDiffusionCanvas({
   const snapshot = useDiffusionSnapshot()
   const provenance = useTraceProvenance()
   const selection = useOptionalSlotSelection()
-  const { promptSlots, sections } = computeCanvasSections(
-    player.trace,
-    snapshot.slots,
-    snapshot.frameIndex
-  )
+  const { promptSlots, completionSlots, sections, hasCanvasStructure } =
+    computeCanvasSections(player.trace, snapshot.slots, snapshot.frameIndex)
   const activeSection = sections.find((s) => s.status === "active")
   const select = (slotId: string) => selection?.setSelectedSlotId(slotId)
 
@@ -205,6 +228,27 @@ export function BlockDiffusionCanvas({
                 slot={slot}
               />
             ))}
+          </section>
+        )}
+        {!hasCanvasStructure && (
+          <section
+            aria-label="Completion tokens"
+            className="flex flex-col gap-1 rounded border border-transparent p-1"
+          >
+            <p className="px-1 text-muted-foreground text-xs">
+              This trace has no block/canvas structure — showing tokens without
+              canvas grouping.
+            </p>
+            <div className="flex flex-wrap items-center gap-1">
+              {completionSlots.map((slot) => (
+                <SlotChip
+                  key={slot.slotId}
+                  onSelect={select}
+                  selected={slot.slotId === selection?.selectedSlotId}
+                  slot={slot}
+                />
+              ))}
+            </div>
           </section>
         )}
         {sections.map((section) => (
