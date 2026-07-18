@@ -159,6 +159,70 @@
           "type": "registry:component"
         }
       ]
+    },
+    {
+      "name": "commit-heatmap",
+      "type": "registry:ui",
+      "title": "Commit Heatmap",
+      "description": "Position × time heatmap with DOM and Canvas rendering modes.",
+      "registryDependencies": [
+        "nishide-dev/dllm-viz/dllm-viz-core",
+        "nishide-dev/dllm-viz/dllm-viz-react"
+      ],
+      "files": [
+        {
+          "path": "registry/default/commit-heatmap/commit-heatmap.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "candidate-distribution",
+      "type": "registry:ui",
+      "title": "Candidate Distribution",
+      "description": "Ranked top-k candidates with entropy, margin, churn, and omitted mass.",
+      "registryDependencies": [
+        "nishide-dev/dllm-viz/dllm-viz-core",
+        "nishide-dev/dllm-viz/dllm-viz-react"
+      ],
+      "files": [
+        {
+          "path": "registry/default/candidate-distribution/candidate-distribution.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "block-diffusion-canvas",
+      "type": "registry:ui",
+      "title": "Block Diffusion Canvas",
+      "description": "Outer canvas progress with a nested active canvas and inner steps.",
+      "registryDependencies": [
+        "nishide-dev/dllm-viz/dllm-viz-core",
+        "nishide-dev/dllm-viz/dllm-viz-react"
+      ],
+      "files": [
+        {
+          "path": "registry/default/block-diffusion-canvas/block-diffusion-canvas.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "diffusion-comparison",
+      "type": "registry:ui",
+      "title": "Diffusion Comparison",
+      "description": "Synchronized side-by-side trace playback with an explicit sync rule.",
+      "registryDependencies": [
+        "nishide-dev/dllm-viz/dllm-viz-core",
+        "nishide-dev/dllm-viz/dllm-viz-react"
+      ],
+      "files": [
+        {
+          "path": "registry/default/diffusion-comparison/diffusion-comparison.tsx",
+          "type": "registry:component"
+        }
+      ]
     }
   ]
 }

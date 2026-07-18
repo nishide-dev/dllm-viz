@@ -16,6 +16,26 @@ export function Home() {
               DenoisingTokenCanvas
             </Link>
           </li>
+          <li>
+            <Link className="underline" to="/components/commit-heatmap">
+              CommitHeatmap
+            </Link>
+          </li>
+          <li>
+            <Link className="underline" to="/components/candidate-distribution">
+              CandidateDistribution
+            </Link>
+          </li>
+          <li>
+            <Link className="underline" to="/components/block-diffusion-canvas">
+              BlockDiffusionCanvas
+            </Link>
+          </li>
+          <li>
+            <Link className="underline" to="/compare">
+              DiffusionComparison
+            </Link>
+          </li>
         </ul>
       </nav>
     </div>
