@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react"
+import type { KeyboardEvent, MouseEvent } from "react"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
 import type {
   CommitMatrix,
   CommitMatrixCell,
@@ -75,6 +76,74 @@ export function heatmapCellColor(
     return `#10b981${alpha}`
   }
   return STATE_COLORS[stateCode] ?? "#d4d4d8"
+}
+
+/** Pure point→cell mapping for canvas hit-testing (unit-tested). */
+export function cellFromPoint(
+  x: number,
+  y: number,
+  cellSize: number,
+  matrix: CommitMatrix
+): { row: number; frame: number } | null {
+  const column = Math.floor(x / cellSize)
+  const row = Math.floor(y / cellSize)
+  if (row < 0 || row >= matrix.slotIds.length) return null
+  if (column < 0 || column >= matrix.frameCount) return null
+  return { row, frame: matrix.startFrame + column }
+}
+
+export interface HeatmapPaintOptions {
+  cellSize: number
+  metric: "state" | "confidence"
+  frameIndex: number
+  selectedRow: number
+  cursor: { row: number; frame: number } | null
+}
+
+/**
+ * Thin paint loop over the pre-computed matrix. All mapping logic lives
+ * in the pure functions above so jsdom tests never need a 2D context.
+ */
+export function paintHeatmap(
+  ctx: CanvasRenderingContext2D,
+  matrix: CommitMatrix,
+  options: HeatmapPaintOptions
+): void {
+  const { cellSize, metric, frameIndex, selectedRow, cursor } = options
+  const width = matrix.frameCount * cellSize
+  const height = matrix.slotIds.length * cellSize
+  ctx.clearRect(0, 0, width, height)
+  for (let row = 0; row < matrix.slotIds.length; row++) {
+    for (let column = 0; column < matrix.frameCount; column++) {
+      const flat = row * matrix.frameCount + column
+      ctx.fillStyle = heatmapCellColor(
+        matrix.states[flat],
+        matrix.confidences[flat],
+        metric
+      )
+      ctx.fillRect(column * cellSize, row * cellSize, cellSize, cellSize)
+    }
+  }
+  // Linked cursor: current player frame column + selected slot row.
+  const frameColumn = frameIndex - matrix.startFrame
+  ctx.strokeStyle = "#18181b"
+  if (frameColumn >= 0 && frameColumn < matrix.frameCount) {
+    ctx.strokeRect(frameColumn * cellSize + 0.5, 0.5, cellSize - 1, height - 1)
+  }
+  if (selectedRow >= 0) {
+    ctx.strokeRect(0.5, selectedRow * cellSize + 0.5, width - 1, cellSize - 1)
+  }
+  if (cursor) {
+    ctx.strokeStyle = "#2563eb"
+    ctx.lineWidth = 2
+    ctx.strokeRect(
+      (cursor.frame - matrix.startFrame) * cellSize + 1,
+      cursor.row * cellSize + 1,
+      cellSize - 2,
+      cellSize - 2
+    )
+    ctx.lineWidth = 1
+  }
 }
 
 export function CommitHeatmap({
@@ -231,10 +300,130 @@ function DomModeView({
 }
 
 // Canvas mode is implemented in the next task (dense traces, spec §19.2).
-function CanvasModeView(_props: ModeViewProps & { cellSize: number }) {
+function CanvasModeView({
+  matrix,
+  metric,
+  frameIndex,
+  selectedRow,
+  reveal,
+  activate,
+  cellSize,
+}: ModeViewProps & { cellSize: number }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [cursor, setCursor] = useState({ row: 0, frame: matrix.startFrame })
+  const readoutHintId = useId()
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const dpr = window.devicePixelRatio || 1
+    const width = matrix.frameCount * cellSize
+    const height = matrix.slotIds.length * cellSize
+    canvas.width = Math.round(width * dpr)
+    canvas.height = Math.round(height * dpr)
+    canvas.style.width = `${width}px`
+    canvas.style.height = `${height}px`
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return // jsdom: mapping is covered by pure-function tests
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    paintHeatmap(ctx, matrix, {
+      cellSize,
+      metric,
+      frameIndex,
+      selectedRow,
+      cursor,
+    })
+  }, [matrix, cellSize, metric, frameIndex, selectedRow, cursor])
+
+  const moveCursor = (dRow: number, dFrame: number) => {
+    const row = Math.min(
+      Math.max(cursor.row + dRow, 0),
+      matrix.slotIds.length - 1
+    )
+    const frame = Math.min(
+      Math.max(cursor.frame + dFrame, matrix.startFrame),
+      matrix.startFrame + matrix.frameCount - 1
+    )
+    setCursor({ row, frame })
+    reveal(row, frame)
+  }
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const handle = (action: () => void) => {
+      // Also stop the window-level player bindings from stepping.
+      event.preventDefault()
+      event.stopPropagation()
+      action()
+    }
+    switch (event.key) {
+      case "ArrowRight":
+        handle(() => moveCursor(0, 1))
+        break
+      case "ArrowLeft":
+        handle(() => moveCursor(0, -1))
+        break
+      case "ArrowDown":
+        handle(() => moveCursor(1, 0))
+        break
+      case "ArrowUp":
+        handle(() => moveCursor(-1, 0))
+        break
+      case "Home":
+        handle(() => moveCursor(0, matrix.startFrame - cursor.frame))
+        break
+      case "End":
+        handle(() =>
+          moveCursor(
+            0,
+            matrix.startFrame + matrix.frameCount - 1 - cursor.frame
+          )
+        )
+        break
+      case "Enter":
+      case " ":
+        handle(() => activate(cursor.row, cursor.frame))
+        break
+    }
+  }
+
+  const cellAt = (event: MouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    return cellFromPoint(
+      event.clientX - rect.left,
+      event.clientY - rect.top,
+      cellSize,
+      matrix
+    )
+  }
+
   return (
-    <div data-slot="heatmap-canvas-placeholder">
-      Dense heatmap (canvas mode) arrives in the next task.
+    <div className="flex flex-col gap-1">
+      <div
+        aria-describedby={readoutHintId}
+        aria-label={`Commit heatmap: ${matrix.slotIds.length} slots by ${matrix.frameCount} frames. Arrow keys move the cell cursor, Enter seeks and selects.`}
+        className="w-fit max-w-full overflow-auto rounded border focus-visible:outline-2 focus-visible:outline-ring"
+        onClick={(event) => {
+          const cell = cellAt(event)
+          if (cell) {
+            setCursor(cell)
+            activate(cell.row, cell.frame)
+          }
+        }}
+        onKeyDown={onKeyDown}
+        onMouseMove={(event) => {
+          const cell = cellAt(event)
+          if (cell) reveal(cell.row, cell.frame)
+        }}
+        role="img"
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: the wrapper IS the keyboard cell cursor
+        tabIndex={0}
+      >
+        <canvas ref={canvasRef} />
+      </div>
+      <p className="sr-only" id={readoutHintId}>
+        Exact values for the hovered or focused cell appear in the readout below
+        the heatmap.
+      </p>
     </div>
   )
 }
