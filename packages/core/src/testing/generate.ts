@@ -14,7 +14,10 @@ export interface PerformanceTraceOptions {
   frameCount?: number
   /** Operations per non-initial frame. Default 10. */
   opsPerFrame?: number
-  /** A checkpoint is emitted every N frames. Default 64 (spec §9.13). */
+  /**
+   * A checkpoint is emitted every N frames. Default 64 — spec §9.13
+   * recommends 32; a wider interval suffices for the synthetic benchmark.
+   */
   checkpointInterval?: number
   /** LCG seed. Same seed ⇒ byte-identical trace. Default 42. */
   seed?: number

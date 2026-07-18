@@ -27,7 +27,7 @@ describe("phase 2 fixtures", () => {
     expect(arBaselineTrace.provenance.mode).toBe("illustrative")
   })
 
-  it("block canvas trace exercises canvas geometry (spec §13)", () => {
+  it("block canvas trace exercises canvas geometry (spec §9.4, §9.8)", () => {
     expect(blockCanvasTrace.geometry.generationMode).toBe("canvas-diffusion")
     const kinds = blockCanvasTrace.frames.map((f) => f.kind)
     expect(kinds.filter((k) => k === "canvas-start")).toHaveLength(2)

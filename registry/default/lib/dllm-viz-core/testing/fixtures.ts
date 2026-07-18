@@ -284,7 +284,8 @@ export const maskedRemaskTrace: DiffusionTrace = {
 }
 
 /**
- * Outer-canvas / inner-step trace (spec §23 block-canvas.json, §13):
+ * Outer-canvas / inner-step trace (spec §23 block-canvas.json; canvas
+ * geometry and frame semantics per §9.4/§9.8):
  * two canvases of length 3, each opened by canvas-start, denoised over
  * two inner steps, and sealed by canvas-commit. Checkpoint after the
  * first canvas commit.
