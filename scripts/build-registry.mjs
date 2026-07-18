@@ -61,12 +61,16 @@ const libItem = (name, title, description, files, extra = {}) => ({
   ...extra,
 })
 
+// Cross-item deps must use the <owner>/<repo>/<item> form: bare names are
+// resolved against the official shadcn registry, not this repository.
+const REPO = "nishide-dev/dllm-viz"
+
 const componentItem = (name, title, description, extra = {}) => ({
   name,
   type: "registry:ui",
   title,
   description,
-  registryDependencies: ["dllm-viz-core", "dllm-viz-react"],
+  registryDependencies: [`${REPO}/dllm-viz-core`, `${REPO}/dllm-viz-react`],
   files: [
     {
       path: `registry/default/${name}/${name}.tsx`,

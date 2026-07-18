@@ -101,7 +101,10 @@
       "type": "registry:ui",
       "title": "Denoising Token Canvas",
       "description": "Trace-faithful token canvas for diffusion language model denoising.",
-      "registryDependencies": ["dllm-viz-core", "dllm-viz-react"],
+      "registryDependencies": [
+        "nishide-dev/dllm-viz/dllm-viz-core",
+        "nishide-dev/dllm-viz/dllm-viz-react"
+      ],
       "files": [
         {
           "path": "registry/default/denoising-token-canvas/denoising-token-canvas.tsx",
@@ -114,7 +117,10 @@
       "type": "registry:ui",
       "title": "Diffusion Step Controls",
       "description": "Deterministic playback controls with keyboard support.",
-      "registryDependencies": ["dllm-viz-core", "dllm-viz-react"],
+      "registryDependencies": [
+        "nishide-dev/dllm-viz/dllm-viz-core",
+        "nishide-dev/dllm-viz/dllm-viz-react"
+      ],
       "files": [
         {
           "path": "registry/default/diffusion-step-controls/diffusion-step-controls.tsx",
@@ -128,7 +134,10 @@
       "type": "registry:ui",
       "title": "Trace Inspector",
       "description": "Exact slot/frame data with provenance labels.",
-      "registryDependencies": ["dllm-viz-core", "dllm-viz-react"],
+      "registryDependencies": [
+        "nishide-dev/dllm-viz/dllm-viz-core",
+        "nishide-dev/dllm-viz/dllm-viz-react"
+      ],
       "files": [
         {
           "path": "registry/default/trace-inspector/trace-inspector.tsx",

@@ -1516,8 +1516,8 @@ Example:
         "tooltip",
         "badge",
         "scroll-area",
-        "dllm-viz-core",
-        "dllm-viz-react"
+        "<owner>/dllm-viz/dllm-viz-core",
+        "<owner>/dllm-viz/dllm-viz-react"
       ],
       "files": [
         {
@@ -1562,7 +1562,7 @@ pnpm dlx shadcn@latest add @dllm-viz/denoising-token-canvas
 Until `@dllm-viz/core` and `@dllm-viz/react` are published to npm (Phase 5):
 
 - Registry items MUST NOT declare them as npm `dependencies`; the shadcn CLI cannot resolve unpublished packages.
-- Their logic MUST instead be distributed as `registry:lib` items (`dllm-viz-core`, `dllm-viz-react`) that visual items declare in `registryDependencies`.
+- Their logic MUST instead be distributed as `registry:lib` items (`dllm-viz-core`, `dllm-viz-react`) that visual items declare in `registryDependencies`, using the `<owner>/<repo>/<item>` form — bare names resolve against the official shadcn registry and fail.
 - The lib item files MUST be generated from `packages/core` and `packages/react` sources by a build script. Hand-maintained duplicates are not permitted.
 - After Phase 5 npm publication, registry items SHOULD switch to ordinary npm `dependencies`.
 
