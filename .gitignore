@@ -35,3 +35,7 @@ dist-ssr
 # git worktrees
 .worktrees
 .superpowers
+
+# agent tooling artifacts (installed locally by plugins)
+.agents/
+skills-lock.json
