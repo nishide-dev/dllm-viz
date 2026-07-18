@@ -1,0 +1,240 @@
+import { useMemo, useState } from "react"
+import type {
+  CommitMatrix,
+  CommitMatrixCell,
+  TokenState,
+} from "@/lib/dllm-viz-core"
+import {
+  buildCommitMatrix,
+  describeMatrixCell,
+  getMatrixCell,
+  MATRIX_ABSENT,
+  TOKEN_STATE_CODES,
+} from "@/lib/dllm-viz-core"
+import {
+  useDiffusionPlayer,
+  useDiffusionSnapshot,
+  useOptionalSlotSelection,
+  useTraceProvenance,
+} from "@/lib/dllm-viz-react"
+import { cn } from "@/lib/utils"
+
+export interface CommitHeatmapProps {
+  /** Cell coloring: token state, or committed-confidence intensity. */
+  metric?: "state" | "confidence"
+  /**
+   * Cell-count threshold: at or below renders DOM (a table of semantic
+   * buttons), above renders Canvas (spec §15.4, §19.2 — never DOM for
+   * tens of thousands of cells).
+   */
+  domCellLimit?: number
+  /** Canvas-mode cell size in CSS px. */
+  cellSize?: number
+  onSlotSelect?: (slotId: string) => void
+  className?: string
+}
+
+/** Per-state glyphs so the heatmap never encodes state by color alone. */
+export const STATE_GLYPHS: Record<TokenState, string> = {
+  prompt: "▁",
+  masked: "░",
+  proposed: "?",
+  committed: "●",
+  fixed: "◆",
+  renoised: "↺",
+  padding: "·",
+  unknown: "▒",
+}
+
+const STATE_COLORS: Record<number, string> = {
+  [TOKEN_STATE_CODES.prompt]: "#e4e4e7",
+  [TOKEN_STATE_CODES.masked]: "#a1a1aa",
+  [TOKEN_STATE_CODES.proposed]: "#f59e0b",
+  [TOKEN_STATE_CODES.committed]: "#10b981",
+  [TOKEN_STATE_CODES.fixed]: "#047857",
+  [TOKEN_STATE_CODES.renoised]: "#ef4444",
+  [TOKEN_STATE_CODES.padding]: "#f4f4f5",
+  [TOKEN_STATE_CODES.unknown]: "#d4d4d8",
+}
+
+/** Pure cell→color mapping shared by DOM and Canvas modes (unit-tested). */
+export function heatmapCellColor(
+  stateCode: number,
+  confidence: number,
+  metric: "state" | "confidence"
+): string {
+  if (stateCode === MATRIX_ABSENT) return "transparent"
+  if (metric === "confidence") {
+    if (Number.isNaN(confidence)) {
+      return stateCode === TOKEN_STATE_CODES.masked ? "#a1a1aa" : "#e4e4e7"
+    }
+    const clamped = Math.min(Math.max(confidence, 0), 1)
+    const alpha = Math.round((0.15 + 0.85 * clamped) * 255)
+      .toString(16)
+      .padStart(2, "0")
+    return `#10b981${alpha}`
+  }
+  return STATE_COLORS[stateCode] ?? "#d4d4d8"
+}
+
+export function CommitHeatmap({
+  metric = "state",
+  domCellLimit = 2000,
+  cellSize = 4,
+  onSlotSelect,
+  className,
+}: CommitHeatmapProps) {
+  const player = useDiffusionPlayer()
+  const snapshot = useDiffusionSnapshot()
+  const provenance = useTraceProvenance()
+  const selection = useOptionalSlotSelection()
+  // player.trace identity changes on appendFrame, so live traces rebuild.
+  const matrix = useMemo(() => buildCommitMatrix(player.trace), [player.trace])
+  const [readoutCell, setReadoutCell] = useState<CommitMatrixCell | null>(null)
+
+  const selectedRow =
+    selection?.selectedSlotId != null
+      ? matrix.slotIds.indexOf(selection.selectedSlotId)
+      : -1
+  const reveal = (row: number, frame: number) =>
+    setReadoutCell(getMatrixCell(matrix, row, frame))
+  const activate = (row: number, frame: number) => {
+    const cell = getMatrixCell(matrix, row, frame)
+    player.seek(frame)
+    selection?.setSelectedSlotId(cell.slotId)
+    onSlotSelect?.(cell.slotId)
+    setReadoutCell(cell)
+  }
+
+  const cellCount = matrix.slotIds.length * matrix.frameCount
+  const mode = cellCount > domCellLimit ? "canvas" : "dom"
+
+  return (
+    <div className={cn("flex flex-col gap-2", className)} data-mode={mode}>
+      {provenance.mode !== "measured" && (
+        <span
+          className="self-start rounded border border-dashed px-1.5 py-0.5 font-mono text-muted-foreground text-xs"
+          title={provenance.notes?.join(" ")}
+        >
+          {provenance.mode}
+        </span>
+      )}
+      {mode === "dom" ? (
+        <DomModeView
+          activate={activate}
+          frameIndex={snapshot.frameIndex}
+          matrix={matrix}
+          metric={metric}
+          reveal={reveal}
+          selectedRow={selectedRow}
+        />
+      ) : (
+        <CanvasModeView
+          activate={activate}
+          cellSize={cellSize}
+          frameIndex={snapshot.frameIndex}
+          matrix={matrix}
+          metric={metric}
+          reveal={reveal}
+          selectedRow={selectedRow}
+        />
+      )}
+      <p
+        className="font-mono text-muted-foreground text-xs"
+        data-slot="heatmap-readout"
+      >
+        {readoutCell
+          ? describeMatrixCell(readoutCell)
+          : "Hover or focus a cell for exact values."}
+      </p>
+    </div>
+  )
+}
+
+interface ModeViewProps {
+  matrix: CommitMatrix
+  metric: "state" | "confidence"
+  frameIndex: number
+  selectedRow: number
+  reveal: (row: number, frame: number) => void
+  activate: (row: number, frame: number) => void
+}
+
+function DomModeView({
+  matrix,
+  metric,
+  frameIndex,
+  selectedRow,
+  reveal,
+  activate,
+}: ModeViewProps) {
+  const frames = Array.from(
+    { length: matrix.frameCount },
+    (_, i) => matrix.startFrame + i
+  )
+  return (
+    <div className="overflow-x-auto">
+      <table
+        aria-label="Commit heatmap"
+        className="border-separate border-spacing-0"
+      >
+        <tbody>
+          {matrix.slotIds.map((slotId, row) => (
+            <tr key={slotId}>
+              <th
+                className="pr-2 text-left font-mono font-normal text-muted-foreground text-xs"
+                scope="row"
+              >
+                {slotId}
+              </th>
+              {frames.map((frame) => {
+                const cell = getMatrixCell(matrix, row, frame)
+                const flat =
+                  row * matrix.frameCount + (frame - matrix.startFrame)
+                return (
+                  <td className="p-0" key={frame}>
+                    <button
+                      aria-current={frame === frameIndex ? "time" : undefined}
+                      aria-label={describeMatrixCell(cell)}
+                      className={cn(
+                        "flex size-5 items-center justify-center border border-transparent text-[9px] leading-none focus-visible:outline-2 focus-visible:outline-ring",
+                        frame === frameIndex && "border-foreground",
+                        row === selectedRow && "ring-1 ring-ring"
+                      )}
+                      data-state={cell.state ?? "absent"}
+                      onClick={() => activate(row, frame)}
+                      onFocus={() => reveal(row, frame)}
+                      onMouseEnter={() => reveal(row, frame)}
+                      style={{
+                        backgroundColor: heatmapCellColor(
+                          matrix.states[flat],
+                          matrix.confidences[flat],
+                          metric
+                        ),
+                      }}
+                      title={describeMatrixCell(cell)}
+                      type="button"
+                    >
+                      <span aria-hidden>
+                        {cell.state ? STATE_GLYPHS[cell.state] : ""}
+                      </span>
+                    </button>
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// Canvas mode is implemented in the next task (dense traces, spec §19.2).
+function CanvasModeView(_props: ModeViewProps & { cellSize: number }) {
+  return (
+    <div data-slot="heatmap-canvas-placeholder">
+      Dense heatmap (canvas mode) arrives in the next task.
+    </div>
+  )
+}
