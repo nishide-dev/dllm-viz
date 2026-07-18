@@ -155,6 +155,7 @@ export function generatePerformanceTrace(
       mode: "illustrative",
       notes: [
         "Deterministically generated dense benchmark trace (spec §21.6). Not real model output.",
+        "Token texts are meaningless placeholders (t0–t99); the trace exercises rendering and seek performance, not language generation.",
       ],
     },
     initial: { checkpointId: "cp-init", frameOrdinal: -1, slots: initialSlots },
