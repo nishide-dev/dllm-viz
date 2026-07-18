@@ -3,6 +3,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react"
 import type {
   CommitMatrix,
   CommitMatrixCell,
+  MatrixCellRef,
   TokenState,
 } from "@/lib/dllm-viz-core"
 import {
@@ -31,6 +32,10 @@ export interface CommitHeatmapProps {
   domCellLimit?: number
   /** Canvas-mode cell size in CSS px. */
   cellSize?: number
+  /**
+   * Fired when a cell is activated, in ADDITION to (not instead of) the
+   * surrounding DiffusionSelectionProvider's setter when one is present.
+   */
   onSlotSelect?: (slotId: string) => void
   className?: string
 }
@@ -84,12 +89,12 @@ export function cellFromPoint(
   y: number,
   cellSize: number,
   matrix: CommitMatrix
-): { row: number; frame: number } | null {
+): MatrixCellRef | null {
   const column = Math.floor(x / cellSize)
-  const row = Math.floor(y / cellSize)
-  if (row < 0 || row >= matrix.slotIds.length) return null
+  const slotRow = Math.floor(y / cellSize)
+  if (slotRow < 0 || slotRow >= matrix.slotIds.length) return null
   if (column < 0 || column >= matrix.frameCount) return null
-  return { row, frame: matrix.startFrame + column }
+  return { slotRow, frameIndex: matrix.startFrame + column }
 }
 
 export interface HeatmapPaintOptions {
@@ -97,7 +102,7 @@ export interface HeatmapPaintOptions {
   metric: "state" | "confidence"
   frameIndex: number
   selectedRow: number
-  cursor: { row: number; frame: number } | null
+  cursor: MatrixCellRef | null
 }
 
 /**
@@ -137,8 +142,8 @@ export function paintHeatmap(
     ctx.strokeStyle = "#2563eb"
     ctx.lineWidth = 2
     ctx.strokeRect(
-      (cursor.frame - matrix.startFrame) * cellSize + 1,
-      cursor.row * cellSize + 1,
+      (cursor.frameIndex - matrix.startFrame) * cellSize + 1,
+      cursor.slotRow * cellSize + 1,
       cellSize - 2,
       cellSize - 2
     )
@@ -165,11 +170,11 @@ export function CommitHeatmap({
     selection?.selectedSlotId != null
       ? matrix.slotIds.indexOf(selection.selectedSlotId)
       : -1
-  const reveal = (row: number, frame: number) =>
-    setReadoutCell(getMatrixCell(matrix, row, frame))
-  const activate = (row: number, frame: number) => {
-    const cell = getMatrixCell(matrix, row, frame)
-    player.seek(frame)
+  const reveal = (cell: MatrixCellRef) =>
+    setReadoutCell(getMatrixCell(matrix, cell))
+  const activate = (cellRef: MatrixCellRef) => {
+    const cell = getMatrixCell(matrix, cellRef)
+    player.seek(cellRef.frameIndex)
     selection?.setSelectedSlotId(cell.slotId)
     onSlotSelect?.(cell.slotId)
     setReadoutCell(cell)
@@ -177,6 +182,24 @@ export function CommitHeatmap({
 
   const cellCount = matrix.slotIds.length * matrix.frameCount
   const mode = cellCount > domCellLimit ? "canvas" : "dom"
+
+  if (cellCount === 0) {
+    return (
+      <div className={cn("flex flex-col gap-2", className)} data-mode="empty">
+        {provenance.mode !== "measured" && (
+          <span
+            className="self-start rounded border border-dashed px-1.5 py-0.5 font-mono text-muted-foreground text-xs"
+            title={provenance.notes?.join(" ")}
+          >
+            {provenance.mode}
+          </span>
+        )}
+        <p className="text-muted-foreground text-sm" role="status">
+          No frames yet — the heatmap fills in as frames arrive.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className={cn("flex flex-col gap-2", className)} data-mode={mode}>
@@ -209,6 +232,7 @@ export function CommitHeatmap({
         />
       )}
       <p
+        aria-live="polite"
         className="font-mono text-muted-foreground text-xs"
         data-slot="heatmap-readout"
       >
@@ -225,8 +249,8 @@ interface ModeViewProps {
   metric: "state" | "confidence"
   frameIndex: number
   selectedRow: number
-  reveal: (row: number, frame: number) => void
-  activate: (row: number, frame: number) => void
+  reveal: (cell: MatrixCellRef) => void
+  activate: (cell: MatrixCellRef) => void
 }
 
 function DomModeView({
@@ -257,7 +281,8 @@ function DomModeView({
                 {slotId}
               </th>
               {frames.map((frame) => {
-                const cell = getMatrixCell(matrix, row, frame)
+                const cellRef = { slotRow: row, frameIndex: frame }
+                const cell = getMatrixCell(matrix, cellRef)
                 const flat =
                   row * matrix.frameCount + (frame - matrix.startFrame)
                 return (
@@ -271,9 +296,9 @@ function DomModeView({
                         row === selectedRow && "ring-1 ring-ring"
                       )}
                       data-state={cell.state ?? "absent"}
-                      onClick={() => activate(row, frame)}
-                      onFocus={() => reveal(row, frame)}
-                      onMouseEnter={() => reveal(row, frame)}
+                      onClick={() => activate(cellRef)}
+                      onFocus={() => reveal(cellRef)}
+                      onMouseEnter={() => reveal(cellRef)}
                       style={{
                         backgroundColor: heatmapCellColor(
                           matrix.states[flat],
@@ -299,6 +324,13 @@ function DomModeView({
   )
 }
 
+/**
+ * Conservative per-dimension backing-store limit. Browsers cap canvas
+ * dimensions (typically 16384–65535 device px); beyond the cap they
+ * silently produce a blank canvas, so render a message instead.
+ */
+export const MAX_CANVAS_DIMENSION = 16_384
+
 function CanvasModeView({
   matrix,
   metric,
@@ -309,8 +341,22 @@ function CanvasModeView({
   cellSize,
 }: ModeViewProps & { cellSize: number }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const [cursor, setCursor] = useState({ row: 0, frame: matrix.startFrame })
+  const [cursor, setCursor] = useState<MatrixCellRef>({
+    slotRow: 0,
+    frameIndex: matrix.startFrame,
+  })
+  const [oversized, setOversized] = useState(false)
   const readoutHintId = useId()
+
+  // The cursor is component state while the matrix can be swapped from
+  // outside (live traces, shorter reruns): clamp at every point of use.
+  const clampCell = (cell: MatrixCellRef): MatrixCellRef => ({
+    slotRow: Math.min(Math.max(cell.slotRow, 0), matrix.slotIds.length - 1),
+    frameIndex: Math.min(
+      Math.max(cell.frameIndex, matrix.startFrame),
+      matrix.startFrame + matrix.frameCount - 1
+    ),
+  })
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -318,8 +364,23 @@ function CanvasModeView({
     const dpr = window.devicePixelRatio || 1
     const width = matrix.frameCount * cellSize
     const height = matrix.slotIds.length * cellSize
-    canvas.width = Math.round(width * dpr)
-    canvas.height = Math.round(height * dpr)
+    const deviceWidth = Math.round(width * dpr)
+    const deviceHeight = Math.round(height * dpr)
+    if (
+      deviceWidth > MAX_CANVAS_DIMENSION ||
+      deviceHeight > MAX_CANVAS_DIMENSION
+    ) {
+      setOversized(true)
+      return
+    }
+    canvas.width = deviceWidth
+    canvas.height = deviceHeight
+    if (canvas.width !== deviceWidth || canvas.height !== deviceHeight) {
+      // The backing store refused the size; a blank canvas would follow.
+      setOversized(true)
+      return
+    }
+    setOversized(false)
     canvas.style.width = `${width}px`
     canvas.style.height = `${height}px`
     const ctx = canvas.getContext("2d")
@@ -330,21 +391,18 @@ function CanvasModeView({
       metric,
       frameIndex,
       selectedRow,
-      cursor,
+      cursor: clampCell(cursor),
     })
-  }, [matrix, cellSize, metric, frameIndex, selectedRow, cursor])
+  })
 
   const moveCursor = (dRow: number, dFrame: number) => {
-    const row = Math.min(
-      Math.max(cursor.row + dRow, 0),
-      matrix.slotIds.length - 1
-    )
-    const frame = Math.min(
-      Math.max(cursor.frame + dFrame, matrix.startFrame),
-      matrix.startFrame + matrix.frameCount - 1
-    )
-    setCursor({ row, frame })
-    reveal(row, frame)
+    const base = clampCell(cursor)
+    const next = clampCell({
+      slotRow: base.slotRow + dRow,
+      frameIndex: base.frameIndex + dFrame,
+    })
+    setCursor(next)
+    reveal(next)
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -368,30 +426,38 @@ function CanvasModeView({
         handle(() => moveCursor(-1, 0))
         break
       case "Home":
-        handle(() => moveCursor(0, matrix.startFrame - cursor.frame))
+        handle(() => moveCursor(0, Number.NEGATIVE_INFINITY))
         break
       case "End":
-        handle(() =>
-          moveCursor(
-            0,
-            matrix.startFrame + matrix.frameCount - 1 - cursor.frame
-          )
-        )
+        handle(() => moveCursor(0, Number.POSITIVE_INFINITY))
         break
       case "Enter":
       case " ":
-        handle(() => activate(cursor.row, cursor.frame))
+        handle(() => activate(clampCell(cursor)))
         break
     }
   }
 
   const cellAt = (event: MouseEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect()
+    // Measure the canvas itself, not the scroll container: the container
+    // rect ignores scroll offsets and would hit-test the wrong cell.
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (!rect) return null
     return cellFromPoint(
       event.clientX - rect.left,
       event.clientY - rect.top,
       cellSize,
       matrix
+    )
+  }
+
+  if (oversized) {
+    return (
+      <p className="text-muted-foreground text-sm" role="status">
+        This trace is too large for canvas rendering ({matrix.slotIds.length}{" "}
+        slots by {matrix.frameCount} frames at {cellSize}px cells). Reduce
+        cellSize or window the trace.
+      </p>
     )
   }
 
@@ -405,13 +471,13 @@ function CanvasModeView({
           const cell = cellAt(event)
           if (cell) {
             setCursor(cell)
-            activate(cell.row, cell.frame)
+            activate(cell)
           }
         }}
         onKeyDown={onKeyDown}
         onMouseMove={(event) => {
           const cell = cellAt(event)
-          if (cell) reveal(cell.row, cell.frame)
+          if (cell) reveal(cell)
         }}
         role="img"
         // biome-ignore lint/a11y/noNoninteractiveTabindex: the wrapper IS the keyboard cell cursor
