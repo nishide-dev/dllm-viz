@@ -5,10 +5,11 @@ import { maskedBasicTrace, maskedRemaskTrace } from "../testing/fixtures"
 import { materializeSlots } from "./materialize"
 
 describe("materializeSlots", () => {
-  it("returns initial slots for frameIndex -1", () => {
-    expect(materializeSlots(maskedBasicTrace, -1)).toBe(
-      maskedBasicTrace.initial.slots
-    )
+  it("returns a copy of the initial slots for frameIndex -1", () => {
+    const slots = materializeSlots(maskedBasicTrace, -1)
+    expect(slots).toEqual(maskedBasicTrace.initial.slots)
+    // A copy, so callers can never alias the trace's internal array.
+    expect(slots).not.toBe(maskedBasicTrace.initial.slots)
   })
 
   it("deterministically reconstructs the remask sequence for slot s3", () => {

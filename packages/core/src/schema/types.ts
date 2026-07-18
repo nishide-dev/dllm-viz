@@ -273,7 +273,7 @@ export interface TraceAnnotation {
 export interface DiffusionSnapshot {
   frameIndex: number
   frame?: DiffusionFrame
-  slots: TokenSlot[]
+  slots: readonly TokenSlot[]
   metrics?: FrameMetrics
   status: "idle" | "playing" | "paused" | "ended"
 }
@@ -288,6 +288,10 @@ export interface DiffusionPlayer {
   play(): void
   pause(): void
   toggle(): void
+  /**
+   * Seek to a frame index. Must be an integer; out-of-range values clamp
+   * to the valid range instead of throwing.
+   */
   seek(frameIndex: number): void
   stepForward(count?: number): void
   stepBackward(count?: number): void

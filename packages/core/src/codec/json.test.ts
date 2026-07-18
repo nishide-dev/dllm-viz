@@ -60,4 +60,36 @@ describe("codec", () => {
   it("rejects invalid JSON lines", () => {
     expect(() => parseTraceJsonl("not json")).toThrow()
   })
+
+  it("reports the line number of malformed JSON", () => {
+    const lines = toJsonl().trim().split("\n")
+    expect(() =>
+      parseTraceJsonl([lines[0], "{oops", ...lines.slice(1)].join("\n"))
+    ).toThrow(/malformed JSON on line 2/)
+  })
+
+  it("includes zod issue details for schema-invalid events", () => {
+    const lines = toJsonl().trim().split("\n")
+    const invalid = JSON.stringify({ type: "frame", frame: { ordinal: 99 } })
+    expect(() =>
+      parseTraceJsonl([...lines.slice(0, -1), invalid].join("\n"))
+    ).toThrow(/frame\.frameId/)
+  })
+
+  it("rejects a duplicated frame event via trace validation", () => {
+    const lines = toJsonl().trim().split("\n")
+    const frameLine = lines[1]
+    const withoutFinal = lines.slice(0, -1)
+    expect(() =>
+      parseTraceJsonl([...withoutFinal, frameLine].join("\n"))
+    ).toThrow(/frameId/)
+  })
+
+  it("rejects a second metadata event", () => {
+    const lines = toJsonl().trim().split("\n")
+    const withoutFinal = lines.slice(0, -1)
+    expect(() =>
+      parseTraceJsonl([...withoutFinal, lines[0]].join("\n"))
+    ).toThrow(/metadata may only appear once/)
+  })
 })

@@ -86,6 +86,27 @@ describe("parseTrace", () => {
     expect(() => parseTrace(raw)).toThrow(/slotId/)
   })
 
+  it("rejects checkpoints whose frameOrdinal is out of order", () => {
+    const raw = minimalTrace()
+    raw.checkpoints = [
+      { checkpointId: "cp-a", frameOrdinal: 1, slots: [] },
+      { checkpointId: "cp-b", frameOrdinal: 0, slots: [] },
+    ]
+    expect(() => parseTrace(raw)).toThrow(/not increasing/)
+  })
+
+  it("rejects a checkpoint frameOrdinal beyond the last frame", () => {
+    const raw = minimalTrace()
+    raw.checkpoints = [{ checkpointId: "cp-a", frameOrdinal: 9, slots: [] }]
+    expect(() => parseTrace(raw)).toThrow(/exceeds last frame ordinal/)
+  })
+
+  it("rejects a negative checkpoint frameOrdinal", () => {
+    const raw = minimalTrace()
+    raw.checkpoints = [{ checkpointId: "cp-a", frameOrdinal: -1, slots: [] }]
+    expect(() => parseTrace(raw)).toThrow(/must be >= 0/)
+  })
+
   it("enforces configurable limits", () => {
     expect(() => parseTrace(minimalTrace(), { maxFrames: 1 })).toThrow(
       /maxFrames/

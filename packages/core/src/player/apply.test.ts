@@ -91,9 +91,70 @@ describe("applyOperations", () => {
     expect(out).toEqual(input)
   })
 
+  it("insert-slots prepends when afterSlotId is undefined", () => {
+    const out = applyOperations(base(), [
+      {
+        type: "insert-slots",
+        slots: [{ slotId: "s3", index: 0, state: "masked" }],
+      },
+    ])
+    expect(out.map((s) => s.slotId)).toEqual(["s3", "s0", "s1", "s2"])
+    expect(out.map((s) => s.index)).toEqual([0, 1, 2, 3])
+  })
+
+  it("insert-slots throws on a duplicate slotId", () => {
+    expect(() =>
+      applyOperations(base(), [
+        {
+          type: "insert-slots",
+          afterSlotId: "s0",
+          slots: [{ slotId: "s1", index: 0, state: "masked" }],
+        },
+      ])
+    ).toThrow(/duplicate slotId "s1"/)
+    expect(() =>
+      applyOperations(base(), [
+        {
+          type: "insert-slots",
+          slots: [
+            { slotId: "s3", index: 0, state: "masked" },
+            { slotId: "s3", index: 1, state: "masked" },
+          ],
+        },
+      ])
+    ).toThrow(/duplicate slotId "s3"/)
+  })
+
+  it("move-slot moves forward, backward, and to the front", () => {
+    const forward = applyOperations(base(), [
+      { type: "move-slot", slotId: "s0", afterSlotId: "s1" },
+    ])
+    expect(forward.map((s) => s.slotId)).toEqual(["s1", "s0", "s2"])
+    expect(forward.map((s) => s.index)).toEqual([0, 1, 2])
+
+    const backward = applyOperations(base(), [
+      { type: "move-slot", slotId: "s2", afterSlotId: "s0" },
+    ])
+    expect(backward.map((s) => s.slotId)).toEqual(["s0", "s2", "s1"])
+
+    const toFront = applyOperations(base(), [
+      { type: "move-slot", slotId: "s2" },
+    ])
+    expect(toFront.map((s) => s.slotId)).toEqual(["s2", "s0", "s1"])
+  })
+
   it("throws on unknown slotId", () => {
     expect(() =>
       applyOperations(base(), [{ type: "mask", slotId: "nope" }])
     ).toThrow(/nope/)
+  })
+
+  it("throws on an unknown operation type from untyped input", () => {
+    const bogus = { type: "explode", slotId: "s0" } as unknown as Parameters<
+      typeof applyOperations
+    >[1][0]
+    expect(() => applyOperations(base(), [bogus])).toThrow(
+      /unknown operation type "explode"/
+    )
   })
 })
