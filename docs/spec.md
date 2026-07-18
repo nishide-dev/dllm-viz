@@ -4,7 +4,7 @@
 > **Status:** Draft for implementation  
 > **Date:** 2026-07-18  
 > **Primary implementation base:** [`nishide-dev/react-monorepo-template`](https://github.com/nishide-dev/react-monorepo-template)  
-> **Primary integration target:** [`nishide-dev/unturtle`](https://github.com/nishide-dev/unturtle)  
+> **Integration targets:** external runtimes via the adapter contract (§11) and streaming protocol (§14); runtime-specific adapters live in their own repositories  
 > **License proposal:** Apache-2.0  
 > **Normative terms:** MUST, SHOULD, MAY are used in the RFC 2119 sense.
 
@@ -79,7 +79,7 @@ The project MUST:
 8. Expose headless playback state independently of visual components.
 9. Distribute visual components through a shadcn-compatible public GitHub registry.
 10. Work in ordinary React applications, including Vite, without requiring Next.js.
-11. Integrate cleanly with Unturtle generation history and streaming callbacks.
+11. Expose a stable adapter contract and streaming protocol that external runtimes (e.g. Unturtle) can target from their own repositories.
 12. Support static deployment to GitHub Pages, Cloudflare Pages, Vercel, or equivalent hosts.
 13. Meet accessibility requirements, including keyboard controls and reduced-motion behavior.
 14. Provide realistic example traces and adapter fixtures.
@@ -348,9 +348,9 @@ A project page compares:
 
 using identical prompt and output regions.
 
-### 7.3 Unturtle Studio integration
+### 7.3 Live runtime integration
 
-Unturtle streams token snapshots and metrics. The frontend converts them into trace frames and renders:
+An external runtime (e.g. Unturtle, via its own adapter) streams trace frames or token snapshots. The frontend renders:
 
 - current token state,
 - mask ratio,
@@ -416,7 +416,6 @@ dllm-viz/
 │   │   ├── src/hooks/
 │   │   └── src/headless/
 │   ├── adapters/
-│   │   ├── src/unturtle/
 │   │   ├── src/diffusiongemma/
 │   │   ├── src/llada/
 │   │   ├── src/dream/
@@ -488,9 +487,10 @@ MUST provide adapter contracts and maintained adapters.
 
 The initial package MAY remain a single package. If dependency conflicts arise, it SHOULD be split into:
 
-- `@dllm-viz/adapter-unturtle`,
 - `@dllm-viz/adapter-transformers`,
 - `@dllm-viz/adapter-generic`.
+
+Runtime-specific adapters (e.g. Unturtle) live in their runtime's repository and implement the §11 contract.
 
 #### `@workspace/ui`
 
@@ -1025,75 +1025,16 @@ Adapters MUST document:
 
 ---
 
-## 12. Unturtle integration
+## 12. External runtime integrations
 
-### 12.1 Existing capabilities
+Runtime-specific exporters and adapters (including the Unturtle exporter and
+adapter) are maintained in their respective runtime repositories, not here.
+This repository's responsibility is to keep the trace schema (§9), the
+adapter contract (§11), and the streaming protocol (§14) stable and
+documented so that external runtimes can target them without changes to the
+frontend.
 
-Unturtle currently exposes shared masked-diffusion generation with:
-
-- `output_history`,
-- `return_dict`,
-- a `history` field in `MaskedDiffusionModelOutput`,
-- `step_callback`,
-- `stream_callback(step, total, x)` snapshots,
-- confidence modes including maximum probability, margin, and negative entropy,
-- block-decode and BD3LM-related generation paths.
-
-References:
-
-- [Unturtle repository](https://github.com/nishide-dev/unturtle)
-- [shared generation utilities](https://github.com/nishide-dev/unturtle/blob/main/unturtle/models/generation/diffusion_generation_utils.py)
-- [generate API unification design](https://github.com/nishide-dev/unturtle/blob/main/docs/superpowers/specs/2026-06-11-generate-api-unification-design.md)
-- [LLaDA generation utilities](https://github.com/nishide-dev/unturtle/blob/main/unturtle/models/backbones/llada/generation_utils.py)
-- [Dream generation utilities](https://github.com/nishide-dev/unturtle/blob/main/unturtle/models/backbones/dream/generation_utils.py)
-
-This makes Unturtle a strong first adapter target.
-
-### 12.2 Minimum Python exporter
-
-The integration SHOULD provide an exporter with an interface similar to:
-
-```python
-from dllm_viz import TraceWriter
-from unturtle import FastDiffusionModel
-
-writer = TraceWriter(
-    model=model,
-    tokenizer=tokenizer,
-    output="trace.jsonl",
-)
-
-output = model.generate(
-    input_ids,
-    return_dict=True,
-    output_history=True,
-    stream_callback=writer.on_step,
-    output_timing=True,
-)
-
-writer.finalize(output)
-```
-
-### 12.3 Recommended Unturtle extension
-
-Unturtle SHOULD eventually expose a structured callback in addition to raw token snapshots:
-
-```python
-trace_callback(
-    step=step,
-    total=total,
-    token_ids=x,
-    committed_mask=transfer_index,
-    confidence=confidence,
-    canvas_index=canvas_index,
-    inner_step=inner_step,
-    metrics=metrics,
-)
-```
-
-This is not required for the first adapter. The initial adapter MAY derive changed and newly visible positions by comparing snapshots. Derived fields MUST be marked as `derived`.
-
-### 12.4 Compatibility rules
+### 12.1 Compatibility rules for external adapters
 
 - The adapter MUST use stable slot IDs.
 - Prompt and generated regions MUST be separated.
@@ -1101,6 +1042,7 @@ This is not required for the first adapter. The initial adapter MAY derive chang
 - Decoding MUST preserve whitespace/subword boundaries.
 - If raw history cannot distinguish proposed from committed tokens, the adapter MUST use `unknown` or document the inference rule.
 - BD3LM and block-decode MUST not be conflated merely because both use the word “block.”
+- Snapshot-derived fields (e.g. positions computed by diffing consecutive snapshots) MUST be marked `derived`.
 
 ---
 
@@ -1901,21 +1843,23 @@ Exit criteria:
 - dense heatmap performance fixture,
 - model/algorithm comparison demo.
 
-### Phase 3 — Unturtle and live streaming
+### Phase 3 — Live streaming
 
 Deliverables:
 
-- Python trace exporter,
-- Unturtle adapter,
 - SSE/fetch stream client,
 - live append mode,
-- partial trace recovery.
+- partial trace recovery,
+- generic snapshot adapter (`@dllm-viz/adapters`) with CPU fixtures.
+
+The runtime-side exporter and adapter (e.g. for Unturtle) are delivered in the runtime's repository against §11/§14 and are not part of this phase's scope here.
 
 Exit criteria:
 
-- one Unturtle generation can be replayed from file,
-- the same generation can be displayed live,
-- final decoded text agrees with Unturtle output.
+- a recorded generation can be replayed from file,
+- the same generation can be displayed live from a stream,
+- the final decoded text agrees with the stream's final event,
+- a partial (interrupted) stream remains replayable.
 
 ### Phase 4 — Continuous/simplex support
 
@@ -1970,7 +1914,6 @@ The first public version MUST include:
 The MVP MAY omit:
 
 - live model hosting,
-- full Unturtle structured callback,
 - variable-length component,
 - latent trajectories,
 - WebSocket control,
@@ -1992,7 +1935,7 @@ The project is ready for an initial stable release when:
 8. Every displayed metric exposes measured/derived/illustrative provenance.
 9. Reduced-motion mode preserves all information.
 10. The final reconstructed sequence matches the trace final output.
-11. Unturtle history or stream snapshots can be converted without modifying the frontend.
+11. External runtime snapshots conforming to §11/§14 can be converted without modifying the frontend.
 12. All core, component, and browser tests pass.
 13. The demo builds and deploys as a static Vite site.
 14. Documentation explicitly warns against substituting generic text scramble for real inference traces.
@@ -2007,11 +1950,11 @@ Resolved:
 - ~~Q4: Should token distributions use probability, log-probability, or allow both?~~ → **Allow both.** `Candidate` carries `probability` and/or `logit`; at least one MUST be present.
 - ~~Q7: Slot identity?~~ → **Deterministic adapter-issued monotonic IDs** (D-013).
 - ~~Q9: Zod vs JSON Schema as canonical source?~~ → **Zod is canonical**, JSON Schema is generated (D-012).
+- ~~Should the Python exporter live here or in Unturtle?~~ → **In Unturtle.** Runtime-specific exporters/adapters live in their runtime's repository (§12).
 
 Open — these do not block phase 0 but should be resolved before schema `1.0`:
 
 1. Should the trace schema be maintained as a standalone language-neutral specification?
-2. Should the Python exporter live here or in Unturtle?
 3. How should batch generation be represented: one trace per sample or one trace with lanes?
 4. How should branching/corrector sampling be represented?
 5. Should annotations be embedded in traces or stored in a sidecar file?
@@ -2031,7 +1974,7 @@ Open — these do not block phase 0 but should be resolved before schema `1.0`:
 8. Render registry source directly in `apps/web`.
 9. Add root `registry.json`.
 10. Add `CommitHeatmap`.
-11. Build the initial Unturtle snapshot adapter.
+11. Build the generic snapshot adapter and stream client.
 12. Add DiffusionGemma canvas fixture.
 13. Publish a preview using static Vite hosting.
 14. Only then add live streaming and continuous-state components.
@@ -2120,7 +2063,7 @@ The project’s defensible technical value will come from:
 - nested block/canvas representation,
 - continuous-state provenance,
 - static and live compatibility,
-- Unturtle integration,
+- a stable integration surface for external runtimes,
 - accessible, installable shadcn components.
 
 Animation quality matters, but semantic correctness is the core product.

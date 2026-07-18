@@ -56,7 +56,7 @@ Layered separation that must be preserved:
 
 1. `packages/core` (`@dllm-viz/core`) — model-independent trace schema (`0.1`), playback state machine, delta/checkpoint reconstruction, codecs, validation. **No React dependency.**
 2. `packages/react` (`@dllm-viz/react`) — headless provider/hooks (`useDiffusionPlayer`, `useTokenSlots`, …). **No visual styling.**
-3. `packages/adapters` — adapters converting model/runtime output (Unturtle, LLaDA, Dream, DiffusionGemma) into traces.
+3. `packages/adapters` — generic/maintained adapters converting model output into traces. Runtime-specific adapters (e.g. Unturtle's) live in their runtime's repository against the §11 adapter contract.
 4. `registry/default/*` — canonical source of distributable shadcn registry items (DenoisingTokenCanvas, DiffusionStepControls, TraceInspector, CommitHeatmap, …), listed in root `registry.json`.
 5. `apps/web` — static Vite docs/demo site that renders the same registry source users install (no demo-only duplicates).
 
