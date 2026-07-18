@@ -31,3 +31,7 @@ dist-ssr
 
 # typescript
 *.tsbuildinfo
+
+# git worktrees
+.worktrees
+.superpowers

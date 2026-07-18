@@ -6,8 +6,16 @@
   ],
   "compilerOptions": {
     "paths": {
+      "@/registry/*": ["../../registry/*"],
       "@/*": ["./src/*"],
-      "@workspace/ui/*": ["../../packages/ui/src/*"]
+      "@workspace/ui/*": ["../../packages/ui/src/*"],
+      "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime.d.ts"],
+      "react/jsx-dev-runtime": [
+        "./node_modules/@types/react/jsx-dev-runtime.d.ts"
+      ],
+      "react": ["./node_modules/@types/react/index.d.ts"],
+      "react-dom": ["./node_modules/@types/react-dom/index.d.ts"],
+      "lucide-react": ["./node_modules/lucide-react/dist/lucide-react.d.ts"]
     }
   }
 }

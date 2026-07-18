@@ -1,0 +1,140 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "dllm-viz",
+  "homepage": "https://github.com/nishide-dev/dllm-viz",
+  "items": [
+    {
+      "name": "dllm-viz-core",
+      "type": "registry:lib",
+      "title": "dLLM Viz Core",
+      "description": "Trace schema 0.1, validation, codecs, and deterministic playback engine.",
+      "files": [
+        {
+          "path": "registry/default/lib/dllm-viz-core/codec/json.ts",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-core/codec/json.ts"
+        },
+        {
+          "path": "registry/default/lib/dllm-viz-core/index.ts",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-core/index.ts"
+        },
+        {
+          "path": "registry/default/lib/dllm-viz-core/player/apply.ts",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-core/player/apply.ts"
+        },
+        {
+          "path": "registry/default/lib/dllm-viz-core/player/describe.ts",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-core/player/describe.ts"
+        },
+        {
+          "path": "registry/default/lib/dllm-viz-core/player/materialize.ts",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-core/player/materialize.ts"
+        },
+        {
+          "path": "registry/default/lib/dllm-viz-core/player/player.ts",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-core/player/player.ts"
+        },
+        {
+          "path": "registry/default/lib/dllm-viz-core/schema/types.ts",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-core/schema/types.ts"
+        },
+        {
+          "path": "registry/default/lib/dllm-viz-core/schema/validate.ts",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-core/schema/validate.ts"
+        },
+        {
+          "path": "registry/default/lib/dllm-viz-core/schema/zod.ts",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-core/schema/zod.ts"
+        },
+        {
+          "path": "registry/default/lib/dllm-viz-core/testing/fixtures.ts",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-core/testing/fixtures.ts"
+        }
+      ],
+      "dependencies": ["zod"]
+    },
+    {
+      "name": "dllm-viz-react",
+      "type": "registry:lib",
+      "title": "dLLM Viz React",
+      "description": "Headless provider and hooks for diffusion trace playback.",
+      "files": [
+        {
+          "path": "registry/default/lib/dllm-viz-react/hooks.ts",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-react/hooks.ts"
+        },
+        {
+          "path": "registry/default/lib/dllm-viz-react/index.ts",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-react/index.ts"
+        },
+        {
+          "path": "registry/default/lib/dllm-viz-react/keyboard.ts",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-react/keyboard.ts"
+        },
+        {
+          "path": "registry/default/lib/dllm-viz-react/provider.tsx",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-react/provider.tsx"
+        },
+        {
+          "path": "registry/default/lib/dllm-viz-react/reduced-motion.ts",
+          "type": "registry:lib",
+          "target": "lib/dllm-viz-react/reduced-motion.ts"
+        }
+      ],
+      "dependencies": ["react"]
+    },
+    {
+      "name": "denoising-token-canvas",
+      "type": "registry:ui",
+      "title": "Denoising Token Canvas",
+      "description": "Trace-faithful token canvas for diffusion language model denoising.",
+      "registryDependencies": ["dllm-viz-core", "dllm-viz-react"],
+      "files": [
+        {
+          "path": "registry/default/denoising-token-canvas/denoising-token-canvas.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "diffusion-step-controls",
+      "type": "registry:ui",
+      "title": "Diffusion Step Controls",
+      "description": "Deterministic playback controls with keyboard support.",
+      "registryDependencies": ["dllm-viz-core", "dllm-viz-react"],
+      "files": [
+        {
+          "path": "registry/default/diffusion-step-controls/diffusion-step-controls.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "dependencies": ["lucide-react"]
+    },
+    {
+      "name": "trace-inspector",
+      "type": "registry:ui",
+      "title": "Trace Inspector",
+      "description": "Exact slot/frame data with provenance labels.",
+      "registryDependencies": ["dllm-viz-core", "dllm-viz-react"],
+      "files": [
+        {
+          "path": "registry/default/trace-inspector/trace-inspector.tsx",
+          "type": "registry:component"
+        }
+      ]
+    }
+  ]
+}

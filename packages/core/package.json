@@ -1,0 +1,27 @@
+{
+  "name": "@dllm-viz/core",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "license": "Apache-2.0",
+  "scripts": {
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "schemas": "tsx scripts/generate-json-schemas.mjs",
+    "fixtures": "tsx scripts/export-fixtures.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "~6",
+    "vitest": "^4.1.10"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/fixtures.ts"
+  }
+}
