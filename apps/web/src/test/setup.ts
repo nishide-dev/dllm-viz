@@ -22,7 +22,7 @@ HTMLCanvasElement.prototype.getContext = (() =>
 
 // The message-scroller primitives observe element size and scroll the
 // viewport; jsdom implements neither.
-if (!("ResizeObserver" in window)) {
+if (typeof window.ResizeObserver === "undefined") {
   class ResizeObserverStub {
     observe() {}
     unobserve() {}
@@ -30,7 +30,7 @@ if (!("ResizeObserver" in window)) {
   }
   window.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver
 }
-if (!("IntersectionObserver" in window)) {
+if (typeof window.IntersectionObserver === "undefined") {
   class IntersectionObserverStub {
     observe() {}
     unobserve() {}
