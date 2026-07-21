@@ -1,4 +1,4 @@
-import type { DiffusionTrace, TokenSlot } from "../schema/types"
+import type { DiffusionTrace, TokenSlot, TraceOperation } from "../schema/types"
 
 function slot(
   slotId: string,
@@ -714,4 +714,239 @@ export const arBaselineTrace: DiffusionTrace = {
       provenance: "illustrative",
     },
   ],
+}
+
+/**
+ * Chat-shaped remasking trace for DiffusionChat (spec §15.11, design
+ * 2026-07-22): a 28-token answer committed in confidence-ranked order —
+ * deliberately not left-to-right — with one showcase slot (s20) that is
+ * distributed, committed as " regenerated", renoised, remasked, and
+ * finally recommitted as " resampled". Hand-authored token table; the
+ * commit/fix operations are derived from it deterministically.
+ */
+const chatTokens = [
+  " Diffusion",
+  " LMs",
+  " denoise",
+  " every",
+  " position",
+  " in",
+  " parallel",
+  ",",
+  " so",
+  " a",
+  " token",
+  " that",
+  " no",
+  " longer",
+  " fits",
+  " can",
+  " be",
+  " remasked",
+  " and",
+  " resampled",
+  " until",
+  " the",
+  " whole",
+  " answer",
+  " is",
+  " self",
+  "-consistent",
+  ".",
+] as const
+
+/** Commit completion token i (1-based) with the given confidence. */
+const chatCommit = (i: number, confidence: number): TraceOperation => ({
+  type: "commit",
+  slotId: `s${i}`,
+  tokenId: 500 + i,
+  text: chatTokens[i - 1],
+  confidence,
+})
+
+export const chatRemaskTrace: DiffusionTrace = {
+  ...sharedMeta,
+  traceId: "fixture-chat-remask",
+  generation: {
+    algorithm: "illustrative-confidence-remask",
+    totalSteps: 9,
+    remaskingStrategy: "loop",
+    confidenceType: "max-prob",
+  },
+  prompt: {
+    text: "Why can diffusion LMs revise their own output?",
+    slotIds: ["s0"],
+  },
+  initial: {
+    checkpointId: "cp-init",
+    frameOrdinal: -1,
+    slots: [
+      slot("s0", 0, {
+        state: "prompt",
+        region: "prompt",
+        text: "Why can diffusion LMs revise their own output?",
+      }),
+      ...chatTokens.map((_, i) => slot(`s${i + 1}`, i + 1)),
+    ],
+  },
+  frames: [
+    { frameId: "f0", ordinal: 0, kind: "initial", operations: [] },
+    {
+      frameId: "f1",
+      ordinal: 1,
+      kind: "denoise",
+      step: 1,
+      operations: [
+        chatCommit(28, 0.99),
+        chatCommit(2, 0.97),
+        chatCommit(1, 0.96),
+        chatCommit(8, 0.95),
+      ],
+      metrics: { maskedCount: 24, committedThisFrame: 4 },
+    },
+    {
+      frameId: "f2",
+      ordinal: 2,
+      kind: "denoise",
+      step: 2,
+      operations: [
+        {
+          type: "set-distribution",
+          slotId: "s20",
+          candidates: [
+            { tokenId: 601, text: " regenerated", probability: 0.44, rank: 0 },
+            { tokenId: 520, text: " resampled", probability: 0.41, rank: 1 },
+            { tokenId: 602, text: " rewritten", probability: 0.09, rank: 2 },
+          ],
+          entropy: 1.05,
+          margin: 0.03,
+          omittedMass: 0.06,
+        },
+        {
+          type: "commit",
+          slotId: "s20",
+          tokenId: 601,
+          text: " regenerated",
+          confidence: 0.44,
+          selectionRank: 0,
+        },
+        chatCommit(3, 0.93),
+        chatCommit(7, 0.92),
+      ],
+      metrics: { maskedCount: 21, committedThisFrame: 3 },
+    },
+    {
+      frameId: "f3",
+      ordinal: 3,
+      kind: "denoise",
+      step: 3,
+      operations: [
+        chatCommit(9, 0.9),
+        chatCommit(18, 0.89),
+        chatCommit(5, 0.88),
+        chatCommit(25, 0.87),
+      ],
+      metrics: { maskedCount: 17, committedThisFrame: 4 },
+    },
+    {
+      frameId: "f4",
+      ordinal: 4,
+      kind: "renoise",
+      step: 4,
+      operations: [
+        {
+          type: "renoise",
+          slotId: "s20",
+          previousTokenId: 601,
+          score: 0.38,
+          reason: "low joint confidence with ' remasked and'",
+        },
+      ],
+      metrics: { remaskedThisFrame: 1 },
+    },
+    {
+      frameId: "f5",
+      ordinal: 5,
+      kind: "denoise",
+      step: 5,
+      operations: [
+        { type: "mask", slotId: "s20", previousTokenId: 601 },
+        chatCommit(4, 0.86),
+        chatCommit(6, 0.85),
+        chatCommit(19, 0.84),
+      ],
+      metrics: { maskedCount: 15, committedThisFrame: 3 },
+    },
+    {
+      frameId: "f6",
+      ordinal: 6,
+      kind: "denoise",
+      step: 6,
+      operations: [
+        {
+          type: "set-distribution",
+          slotId: "s20",
+          candidates: [
+            { tokenId: 520, text: " resampled", probability: 0.83, rank: 0 },
+            { tokenId: 601, text: " regenerated", probability: 0.08, rank: 1 },
+            { tokenId: 602, text: " rewritten", probability: 0.04, rank: 2 },
+          ],
+          entropy: 0.52,
+          margin: 0.75,
+          omittedMass: 0.05,
+        },
+        chatCommit(20, 0.83),
+        chatCommit(11, 0.82),
+        chatCommit(16, 0.8),
+      ],
+      metrics: { maskedCount: 12, committedThisFrame: 3 },
+    },
+    {
+      frameId: "f7",
+      ordinal: 7,
+      kind: "denoise",
+      step: 7,
+      operations: [
+        chatCommit(10, 0.79),
+        chatCommit(12, 0.78),
+        chatCommit(17, 0.77),
+        chatCommit(21, 0.76),
+        chatCommit(26, 0.75),
+      ],
+      metrics: { maskedCount: 7, committedThisFrame: 5 },
+    },
+    {
+      frameId: "f8",
+      ordinal: 8,
+      kind: "denoise",
+      step: 8,
+      operations: [
+        chatCommit(13, 0.74),
+        chatCommit(14, 0.73),
+        chatCommit(15, 0.72),
+        chatCommit(22, 0.71),
+        chatCommit(23, 0.7),
+        chatCommit(24, 0.69),
+        chatCommit(27, 0.68),
+      ],
+      metrics: { maskedCount: 0, committedThisFrame: 7 },
+    },
+    {
+      frameId: "f9",
+      ordinal: 9,
+      kind: "final",
+      step: 9,
+      operations: chatTokens.map(
+        (_, i): TraceOperation => ({
+          type: "set-token",
+          slotId: `s${i + 1}`,
+          state: "fixed",
+        })
+      ),
+    },
+  ],
+  final: {
+    text: "Why can diffusion LMs revise their own output? Diffusion LMs denoise every position in parallel, so a token that no longer fits can be remasked and resampled until the whole answer is self-consistent.",
+    finishReason: "completed",
+  },
 }
