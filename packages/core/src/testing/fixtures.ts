@@ -721,8 +721,9 @@ export const arBaselineTrace: DiffusionTrace = {
  * 2026-07-22): a 28-token answer committed in confidence-ranked order —
  * deliberately not left-to-right — with one showcase slot (s20) that is
  * distributed, committed as " regenerated", renoised, remasked, and
- * finally recommitted as " resampled". Hand-authored token table; the
- * commit/fix operations are derived from it deterministically.
+ * finally recommitted as " resampled". Hand-authored token table; commit
+ * texts/tokenIds and the final fix frame are derived from it; the commit
+ * order and confidence values are hand-listed per frame.
  */
 const chatTokens = [
   " Diffusion",

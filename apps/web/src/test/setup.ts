@@ -20,8 +20,8 @@ if (!window.matchMedia) {
 HTMLCanvasElement.prototype.getContext = (() =>
   null) as typeof HTMLCanvasElement.prototype.getContext
 
-// The message-scroller primitives observe element size and scroll the
-// viewport; jsdom implements neither.
+// The message-scroller primitives observe element size and visibility and
+// scroll the viewport; jsdom implements none of these.
 if (typeof window.ResizeObserver === "undefined") {
   class ResizeObserverStub {
     observe() {}
