@@ -43,6 +43,14 @@ export type ChatTurn =
       text?: never
     }
 
+// With the `trace?: never` fence both union members carry a `trace` key in
+// type space, so `"trace" in turn` no longer narrows — test the value.
+function isTraceTurn(
+  turn: ChatTurn
+): turn is Extract<ChatTurn, { trace: DiffusionTrace }> {
+  return turn.trace !== undefined
+}
+
 export interface DiffusionChatProps {
   turns: ChatTurn[]
   /**
@@ -311,9 +319,9 @@ export function DiffusionChat({
               <MessageScrollerItem
                 key={turn.id}
                 // Trace turns anchor the viewport so it follows generation.
-                scrollAnchor={"trace" in turn}
+                scrollAnchor={isTraceTurn(turn)}
               >
-                {"trace" in turn ? (
+                {isTraceTurn(turn) ? (
                   <DiffusionTraceProvider
                     autoPlay={turn.autoPlay ?? false}
                     trace={turn.trace}
