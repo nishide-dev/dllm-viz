@@ -62,6 +62,9 @@ describe("App", () => {
     const user = userEvent.setup()
     renderAt("/components/diffusion-chat")
     await user.click(screen.getByRole("button", { name: "Send" }))
+    // The turn autoplays on real timers; pause right away so no 250ms tick
+    // fires between the remaining assertions.
+    await user.click(screen.getByRole("button", { name: "Pause replay" }))
     expect(
       screen.getByText("Why can diffusion LMs revise their own output?")
     ).toBeInTheDocument()
@@ -75,6 +78,8 @@ describe("App", () => {
     const user = userEvent.setup()
     renderAt("/components/diffusion-chat")
     await user.click(screen.getByRole("button", { name: "Send" }))
+    // Pause the autoplaying replay so real timers stay quiet (see above).
+    await user.click(screen.getByRole("button", { name: "Pause replay" }))
     await user.click(screen.getByRole("button", { name: "Reset" }))
     expect(
       screen.queryByRole("group", { name: "Token canvas" })
