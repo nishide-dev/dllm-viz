@@ -6,6 +6,7 @@ import { CandidateDistributionDemo } from "@/routes/candidate-distribution-demo"
 import { CommitHeatmapDemo } from "@/routes/commit-heatmap-demo"
 import { Compare } from "@/routes/compare"
 import { DenoisingTokenCanvasDemo } from "@/routes/denoising-token-canvas-demo"
+import { DiffusionChatDemo } from "@/routes/diffusion-chat-demo"
 import { Home } from "@/routes/home"
 
 export function App() {
@@ -28,6 +29,10 @@ export function App() {
         <Route
           element={<BlockDiffusionCanvasDemo />}
           path="/components/block-diffusion-canvas"
+        />
+        <Route
+          element={<DiffusionChatDemo />}
+          path="/components/diffusion-chat"
         />
         <Route element={<Compare />} path="/compare" />
       </Route>

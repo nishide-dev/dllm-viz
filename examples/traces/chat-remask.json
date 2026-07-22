@@ -1,0 +1,734 @@
+{
+  "schemaVersion": "0.1",
+  "createdAt": "2026-07-18T00:00:00Z",
+  "source": {
+    "adapter": "hand-authored",
+    "adapterVersion": "0.0.1"
+  },
+  "geometry": {
+    "timeDomain": "discrete",
+    "stateSpace": "token",
+    "generationMode": "full-sequence"
+  },
+  "provenance": {
+    "mode": "illustrative",
+    "notes": ["Hand-authored for demos and tests. Not real model output."]
+  },
+  "traceId": "fixture-chat-remask",
+  "generation": {
+    "algorithm": "illustrative-confidence-remask",
+    "totalSteps": 9,
+    "remaskingStrategy": "loop",
+    "confidenceType": "max-prob"
+  },
+  "prompt": {
+    "text": "Why can diffusion LMs revise their own output?",
+    "slotIds": ["s0"]
+  },
+  "initial": {
+    "checkpointId": "cp-init",
+    "frameOrdinal": -1,
+    "slots": [
+      {
+        "slotId": "s0",
+        "index": 0,
+        "state": "prompt",
+        "region": "prompt",
+        "text": "Why can diffusion LMs revise their own output?"
+      },
+      {
+        "slotId": "s1",
+        "index": 1,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s2",
+        "index": 2,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s3",
+        "index": 3,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s4",
+        "index": 4,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s5",
+        "index": 5,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s6",
+        "index": 6,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s7",
+        "index": 7,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s8",
+        "index": 8,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s9",
+        "index": 9,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s10",
+        "index": 10,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s11",
+        "index": 11,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s12",
+        "index": 12,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s13",
+        "index": 13,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s14",
+        "index": 14,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s15",
+        "index": 15,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s16",
+        "index": 16,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s17",
+        "index": 17,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s18",
+        "index": 18,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s19",
+        "index": 19,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s20",
+        "index": 20,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s21",
+        "index": 21,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s22",
+        "index": 22,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s23",
+        "index": 23,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s24",
+        "index": 24,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s25",
+        "index": 25,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s26",
+        "index": 26,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s27",
+        "index": 27,
+        "state": "masked",
+        "region": "completion"
+      },
+      {
+        "slotId": "s28",
+        "index": 28,
+        "state": "masked",
+        "region": "completion"
+      }
+    ]
+  },
+  "frames": [
+    {
+      "frameId": "f0",
+      "ordinal": 0,
+      "kind": "initial",
+      "operations": []
+    },
+    {
+      "frameId": "f1",
+      "ordinal": 1,
+      "kind": "denoise",
+      "step": 1,
+      "operations": [
+        {
+          "type": "commit",
+          "slotId": "s28",
+          "tokenId": 528,
+          "text": ".",
+          "confidence": 0.99
+        },
+        {
+          "type": "commit",
+          "slotId": "s2",
+          "tokenId": 502,
+          "text": " LMs",
+          "confidence": 0.97
+        },
+        {
+          "type": "commit",
+          "slotId": "s1",
+          "tokenId": 501,
+          "text": " Diffusion",
+          "confidence": 0.96
+        },
+        {
+          "type": "commit",
+          "slotId": "s8",
+          "tokenId": 508,
+          "text": ",",
+          "confidence": 0.95
+        }
+      ],
+      "metrics": {
+        "maskedCount": 24,
+        "committedThisFrame": 4
+      }
+    },
+    {
+      "frameId": "f2",
+      "ordinal": 2,
+      "kind": "denoise",
+      "step": 2,
+      "operations": [
+        {
+          "type": "set-distribution",
+          "slotId": "s20",
+          "candidates": [
+            {
+              "tokenId": 601,
+              "text": " regenerated",
+              "probability": 0.44,
+              "rank": 0
+            },
+            {
+              "tokenId": 520,
+              "text": " resampled",
+              "probability": 0.41,
+              "rank": 1
+            },
+            {
+              "tokenId": 602,
+              "text": " rewritten",
+              "probability": 0.09,
+              "rank": 2
+            }
+          ],
+          "entropy": 1.05,
+          "margin": 0.03,
+          "omittedMass": 0.06
+        },
+        {
+          "type": "commit",
+          "slotId": "s20",
+          "tokenId": 601,
+          "text": " regenerated",
+          "confidence": 0.44,
+          "selectionRank": 0
+        },
+        {
+          "type": "commit",
+          "slotId": "s3",
+          "tokenId": 503,
+          "text": " denoise",
+          "confidence": 0.93
+        },
+        {
+          "type": "commit",
+          "slotId": "s7",
+          "tokenId": 507,
+          "text": " parallel",
+          "confidence": 0.92
+        }
+      ],
+      "metrics": {
+        "maskedCount": 21,
+        "committedThisFrame": 3
+      }
+    },
+    {
+      "frameId": "f3",
+      "ordinal": 3,
+      "kind": "denoise",
+      "step": 3,
+      "operations": [
+        {
+          "type": "commit",
+          "slotId": "s9",
+          "tokenId": 509,
+          "text": " so",
+          "confidence": 0.9
+        },
+        {
+          "type": "commit",
+          "slotId": "s18",
+          "tokenId": 518,
+          "text": " remasked",
+          "confidence": 0.89
+        },
+        {
+          "type": "commit",
+          "slotId": "s5",
+          "tokenId": 505,
+          "text": " position",
+          "confidence": 0.88
+        },
+        {
+          "type": "commit",
+          "slotId": "s25",
+          "tokenId": 525,
+          "text": " is",
+          "confidence": 0.87
+        }
+      ],
+      "metrics": {
+        "maskedCount": 17,
+        "committedThisFrame": 4
+      }
+    },
+    {
+      "frameId": "f4",
+      "ordinal": 4,
+      "kind": "renoise",
+      "step": 4,
+      "operations": [
+        {
+          "type": "renoise",
+          "slotId": "s20",
+          "previousTokenId": 601,
+          "score": 0.38,
+          "reason": "low joint confidence with ' remasked and'"
+        }
+      ],
+      "metrics": {
+        "remaskedThisFrame": 1
+      }
+    },
+    {
+      "frameId": "f5",
+      "ordinal": 5,
+      "kind": "denoise",
+      "step": 5,
+      "operations": [
+        {
+          "type": "mask",
+          "slotId": "s20",
+          "previousTokenId": 601
+        },
+        {
+          "type": "commit",
+          "slotId": "s4",
+          "tokenId": 504,
+          "text": " every",
+          "confidence": 0.86
+        },
+        {
+          "type": "commit",
+          "slotId": "s6",
+          "tokenId": 506,
+          "text": " in",
+          "confidence": 0.85
+        },
+        {
+          "type": "commit",
+          "slotId": "s19",
+          "tokenId": 519,
+          "text": " and",
+          "confidence": 0.84
+        }
+      ],
+      "metrics": {
+        "maskedCount": 15,
+        "committedThisFrame": 3
+      }
+    },
+    {
+      "frameId": "f6",
+      "ordinal": 6,
+      "kind": "denoise",
+      "step": 6,
+      "operations": [
+        {
+          "type": "set-distribution",
+          "slotId": "s20",
+          "candidates": [
+            {
+              "tokenId": 520,
+              "text": " resampled",
+              "probability": 0.83,
+              "rank": 0
+            },
+            {
+              "tokenId": 601,
+              "text": " regenerated",
+              "probability": 0.08,
+              "rank": 1
+            },
+            {
+              "tokenId": 602,
+              "text": " rewritten",
+              "probability": 0.04,
+              "rank": 2
+            }
+          ],
+          "entropy": 0.52,
+          "margin": 0.75,
+          "omittedMass": 0.05
+        },
+        {
+          "type": "commit",
+          "slotId": "s20",
+          "tokenId": 520,
+          "text": " resampled",
+          "confidence": 0.83
+        },
+        {
+          "type": "commit",
+          "slotId": "s11",
+          "tokenId": 511,
+          "text": " token",
+          "confidence": 0.82
+        },
+        {
+          "type": "commit",
+          "slotId": "s16",
+          "tokenId": 516,
+          "text": " can",
+          "confidence": 0.8
+        }
+      ],
+      "metrics": {
+        "maskedCount": 12,
+        "committedThisFrame": 3
+      }
+    },
+    {
+      "frameId": "f7",
+      "ordinal": 7,
+      "kind": "denoise",
+      "step": 7,
+      "operations": [
+        {
+          "type": "commit",
+          "slotId": "s10",
+          "tokenId": 510,
+          "text": " a",
+          "confidence": 0.79
+        },
+        {
+          "type": "commit",
+          "slotId": "s12",
+          "tokenId": 512,
+          "text": " that",
+          "confidence": 0.78
+        },
+        {
+          "type": "commit",
+          "slotId": "s17",
+          "tokenId": 517,
+          "text": " be",
+          "confidence": 0.77
+        },
+        {
+          "type": "commit",
+          "slotId": "s21",
+          "tokenId": 521,
+          "text": " until",
+          "confidence": 0.76
+        },
+        {
+          "type": "commit",
+          "slotId": "s26",
+          "tokenId": 526,
+          "text": " self",
+          "confidence": 0.75
+        }
+      ],
+      "metrics": {
+        "maskedCount": 7,
+        "committedThisFrame": 5
+      }
+    },
+    {
+      "frameId": "f8",
+      "ordinal": 8,
+      "kind": "denoise",
+      "step": 8,
+      "operations": [
+        {
+          "type": "commit",
+          "slotId": "s13",
+          "tokenId": 513,
+          "text": " no",
+          "confidence": 0.74
+        },
+        {
+          "type": "commit",
+          "slotId": "s14",
+          "tokenId": 514,
+          "text": " longer",
+          "confidence": 0.73
+        },
+        {
+          "type": "commit",
+          "slotId": "s15",
+          "tokenId": 515,
+          "text": " fits",
+          "confidence": 0.72
+        },
+        {
+          "type": "commit",
+          "slotId": "s22",
+          "tokenId": 522,
+          "text": " the",
+          "confidence": 0.71
+        },
+        {
+          "type": "commit",
+          "slotId": "s23",
+          "tokenId": 523,
+          "text": " whole",
+          "confidence": 0.7
+        },
+        {
+          "type": "commit",
+          "slotId": "s24",
+          "tokenId": 524,
+          "text": " answer",
+          "confidence": 0.69
+        },
+        {
+          "type": "commit",
+          "slotId": "s27",
+          "tokenId": 527,
+          "text": "-consistent",
+          "confidence": 0.68
+        }
+      ],
+      "metrics": {
+        "maskedCount": 0,
+        "committedThisFrame": 7
+      }
+    },
+    {
+      "frameId": "f9",
+      "ordinal": 9,
+      "kind": "final",
+      "step": 9,
+      "operations": [
+        {
+          "type": "set-token",
+          "slotId": "s1",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s2",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s3",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s4",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s5",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s6",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s7",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s8",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s9",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s10",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s11",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s12",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s13",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s14",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s15",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s16",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s17",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s18",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s19",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s20",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s21",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s22",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s23",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s24",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s25",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s26",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s27",
+          "state": "fixed"
+        },
+        {
+          "type": "set-token",
+          "slotId": "s28",
+          "state": "fixed"
+        }
+      ]
+    }
+  ],
+  "final": {
+    "text": "Why can diffusion LMs revise their own output? Diffusion LMs denoise every position in parallel, so a token that no longer fits can be remasked and resampled until the whole answer is self-consistent.",
+    "finishReason": "completed"
+  }
+}

@@ -7,6 +7,7 @@ const links = [
   { to: "/components/commit-heatmap", label: "CommitHeatmap" },
   { to: "/components/candidate-distribution", label: "Candidates" },
   { to: "/components/block-diffusion-canvas", label: "BlockCanvas" },
+  { to: "/components/diffusion-chat", label: "Chat" },
   { to: "/compare", label: "Compare" },
 ]
 

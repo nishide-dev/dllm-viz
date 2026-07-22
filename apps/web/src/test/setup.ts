@@ -19,3 +19,29 @@ if (!window.matchMedia) {
 // components take their guarded no-paint branch without console noise.
 HTMLCanvasElement.prototype.getContext = (() =>
   null) as typeof HTMLCanvasElement.prototype.getContext
+
+// The message-scroller primitives observe element size and visibility and
+// scroll the viewport; jsdom implements none of these.
+if (typeof window.ResizeObserver === "undefined") {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  window.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver
+}
+if (typeof window.IntersectionObserver === "undefined") {
+  class IntersectionObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords() {
+      return []
+    }
+  }
+  window.IntersectionObserver =
+    IntersectionObserverStub as unknown as typeof IntersectionObserver
+}
+if (!Element.prototype.scrollTo) {
+  Element.prototype.scrollTo = (() => {}) as typeof Element.prototype.scrollTo
+}

@@ -36,6 +36,11 @@ export function Home() {
               DiffusionComparison
             </Link>
           </li>
+          <li>
+            <Link className="underline" to="/components/diffusion-chat">
+              DiffusionChat
+            </Link>
+          </li>
         </ul>
       </nav>
     </div>

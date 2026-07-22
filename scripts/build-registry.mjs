@@ -135,6 +135,23 @@ const registry = {
       "Diffusion Comparison",
       "Synchronized side-by-side trace playback with an explicit sync rule."
     ),
+    componentItem(
+      "diffusion-chat",
+      "Diffusion Chat",
+      "Chat surface embedding diffusion trace playback in assistant bubbles.",
+      {
+        dependencies: ["lucide-react"],
+        registryDependencies: [
+          "message-scroller",
+          "message",
+          "bubble",
+          "marker",
+          `${REPO}/dllm-viz-core`,
+          `${REPO}/dllm-viz-react`,
+          `${REPO}/denoising-token-canvas`,
+        ],
+      }
+    ),
   ],
 }
 

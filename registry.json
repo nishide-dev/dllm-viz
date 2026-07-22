@@ -223,6 +223,28 @@
           "type": "registry:component"
         }
       ]
+    },
+    {
+      "name": "diffusion-chat",
+      "type": "registry:ui",
+      "title": "Diffusion Chat",
+      "description": "Chat surface embedding diffusion trace playback in assistant bubbles.",
+      "registryDependencies": [
+        "message-scroller",
+        "message",
+        "bubble",
+        "marker",
+        "nishide-dev/dllm-viz/dllm-viz-core",
+        "nishide-dev/dllm-viz/dllm-viz-react",
+        "nishide-dev/dllm-viz/denoising-token-canvas"
+      ],
+      "files": [
+        {
+          "path": "registry/default/diffusion-chat/diffusion-chat.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "dependencies": ["lucide-react"]
     }
   ]
 }

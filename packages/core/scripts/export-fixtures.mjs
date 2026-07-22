@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url"
 import {
   arBaselineTrace,
   blockCanvasTrace,
+  chatRemaskTrace,
   confidenceCommitTrace,
   maskedBasicTrace,
   maskedRemaskTrace,
@@ -24,6 +25,7 @@ const fixtures = [
   ["block-canvas.json", blockCanvasTrace],
   ["confidence-commit.json", confidenceCommitTrace],
   ["ar-baseline.json", arBaselineTrace],
+  ["chat-remask.json", chatRemaskTrace],
 ]
 for (const dir of targets) {
   mkdirSync(dir, { recursive: true })
